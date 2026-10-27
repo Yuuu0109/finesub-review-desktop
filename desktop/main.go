@@ -1,9 +1,8 @@
 // Command desktop is the desktop shell of the FineSub review app.
 //
-// It replaces the Tauri shell: the same frontend build is served at
-// mygo://localhost/, and every HTTP request to the review server leaves from
-// Go, so the app keeps a shared cookie jar, is not subject to CORS, and can
-// read every response header.
+// It serves the frontend build at mygo://localhost/, and every HTTP request to
+// the review server leaves from Go, so the app keeps a shared cookie jar, is not
+// subject to CORS, and can read every response header.
 package main
 
 import (
@@ -116,9 +115,9 @@ func main() {
 			MinHeight: 640,
 		})
 		// The page is an app, not a browser: a navigation away from the app's
-		// own pages is refused, as Tauri's on_navigation whitelist did. Links
-		// to the outside are opened by the system browser from main.ts, which
-		// cancels the click before it becomes a navigation.
+		// own pages is refused. Links to the outside are opened by the system
+		// browser from main.ts, which cancels the click before it becomes a
+		// navigation.
 		window.Page().OnWillNavigate(func(e *mygo.NavigateEvent) {
 			if !allowedNavigation(e.URL) {
 				e.PreventDefault()
@@ -133,18 +132,15 @@ func main() {
 
 // contentSecurityPolicy is the policy every page of the app is served with.
 //
-// It is the Tauri configuration's policy, adapted to this shell:
-//   - the Tauri bridge was reached over the `ipc:` scheme and
-//     `http://ipc.localhost`, while MyGo's bridge is
-//     `window.chrome.webview.postMessage`, which is not a network fetch and so
-//     needs no connect-src entry;
+//   - the bridge to Go is `window.chrome.webview.postMessage`, which is not a
+//     network fetch and so needs no connect-src entry;
 //   - requests to the review server leave from Go (the fetch plugin) and never
-//     from the page, so connect-src stays 'self' as it was;
-//   - style-src no longer allows 'unsafe-inline': the production build links its
+//     from the page, so connect-src is 'self';
+//   - style-src does not allow 'unsafe-inline': the production build links its
 //     stylesheet, no component sets an inline style, and Vue's v-show and
 //     transitions go through the CSSOM, which the policy does not govern;
-//   - frame-ancestors 'none' is added to match the server deployment, which
-//     refuses to be framed at all.
+//   - frame-ancestors 'none' matches the server deployment, which refuses to be
+//     framed at all.
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; " +
 	"img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; " +
 	"frame-ancestors 'none'"
@@ -162,7 +158,7 @@ func withSecurityHeaders(files http.Handler) http.Handler {
 
 // newReviewClient is the HTTP client every request to the review server uses.
 //
-// It must keep the four properties the Tauri HTTP plugin gave the frontend:
+// It must keep the four properties the frontend relies on:
 //
 //   - a cookie jar: `credentials: "include"` only keeps a session because Go
 //     sends the cookie of the previous response. http.DefaultClient has no
@@ -207,13 +203,12 @@ func (shellService) OpenExternal(raw string) error {
 	return mygo.Shell.OpenExternal(raw)
 }
 
-// Version returns the app version, which the frontend used to read from the
-// Tauri app metadata.
+// Version returns the app version, which the page shows.
 func (shellService) Version() string { return version }
 
-// SaveDownload asks where to save a file and writes bytes there, replacing
-// the dialog and fs plugins: the bytes arrive from the page as the response
-// body it already read, so no path of the app is exposed to the page.
+// SaveDownload asks where to save a file and writes bytes there. The bytes
+// arrive from the page as the response body it already read, so no path of the
+// app is exposed to the page.
 func (shellService) SaveDownload(name string, bytes []byte) (string, error) {
 	if name == "" {
 		name = "download.zip"

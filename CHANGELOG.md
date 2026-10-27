@@ -2,13 +2,13 @@
 
 ## 0.4.0 — 2026-10-27
 
-- 桌面外壳由 Tauri 2（Rust）换成 MyGo 0.7.1（Go + WebView2），构建不再需要 Rust、MSVC 或 C++ Build Tools，只需要 Node 22、pnpm 11 与 Go 1.27.3（MyGo 的 `go.mod` 硬性要求，`GOTOOLCHAIN=auto` 会自动取用该工具链）。
-- 前端页面由 `go:embed` 内嵌进可执行文件，程序自己通过 `mygo://` 协议处理器提供这些文件——这是 MyGo 下唯一能附加内容安全策略（CSP）的方式，因此 CSP 从 Tauri 的配置项改为由 Go 侧响应头下发，并去掉不再需要的 `unsafe-inline`、补上 `frame-ancestors 'none'`。
-- 发往后端审核服务的请求改由 Go 发出（MyGo 的 fetch 插件），保留原有四条性质：会话 Cookie 由 Go 侧的 cookie jar 保持、拒绝跟随重定向、上传保持 multipart 边界、二进制响应逐字节完整。页面自身的 origin 不影响 API 调用，迁移前后一致。
-- 更新签名体系由 minisign 改为 Ed25519，更新源由固定的 `latest.json` 改为按 `desktop-v*` 标签解析最新正式 Release 的 `update-windows-amd64.json`。两种签名的公钥互不认可，因此**Tauri 版客户端无法通过应用内更新升级到本版**，需要手动下载一次新的可执行文件；之后的版本才能在应用内更新。
-- 更新流程的实际行为改为「下载并安装」：下载过程中即完成验签与就地替换，界面明确提示关闭窗口不会撤销安装，下一次启动即为新版本。原「另存新版」入口移除，因为该流程没有独立归档可供另存；保留版本副本需要新的两阶段安装设计，留待后续版本。
-- 构建产物改为 `desktop/build/windows-amd64/`，包含免安装程序 `FineSub Review.exe`、NSIS 安装器、更新用归档、已签名的更新清单与 `install.ps1`；`scripts/verify_desktop.mjs` 改为校验 Ed25519 签名、清单版本、PE32+ x64 头、内嵌前端标记与 `SHA256SUMS`。
-- 图标改由 `frontend/src/assets/icons/mika-source.png` 生成 Windows 全部尺寸，不再依赖 `icon.ico`；`frontend/src-tauri` 目录、`@tauri-apps/*` 依赖与相关脚本一并移除。
+- 桌面客户端用 Go 1.27.3 与 MyGo 0.7.1 构建，界面跑在系统 WebView2 上。构建只需 Node 22、pnpm 11 与 Go（`GOTOOLCHAIN=auto` 会自动取用 `go.mod` 声明的工具链），不需要 Rust、MSVC 或 C++ Build Tools。
+- 前端页面由 `go:embed` 内嵌进可执行文件，由程序自己的 `mygo://` 协议处理器提供，因此单独一个可执行文件就能运行，不必随包附带静态目录。内容安全策略由 Go 侧响应头下发（`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`），同时下发 `X-Content-Type-Options: nosniff` 与 `Referrer-Policy: same-origin`。
+- 发往后端审核服务的请求由 Go 发出（MyGo 的 fetch 插件）：会话 Cookie 由 Go 侧 cookie jar 保持、拒绝跟随重定向、上传保持 multipart 边界、二进制响应逐字节完整。页面自身的 origin 不影响 API 调用。
+- 更新签名用 Ed25519，公钥编入客户端；更新源按 `desktop-v*` 标签解析最新正式 Release 的 `update-windows-amd64.json`，清单指向同一标签下的更新归档。
+- 更新流程是「下载并安装」：下载过程中即完成验签与就地替换，界面明确提示关闭窗口不会撤销安装，下一次启动即为新版本。不提供「另存新版」入口，因为该流程没有独立归档可供另存；保留版本副本需要两阶段安装设计，留待后续版本。
+- 构建产物在 `desktop/build/windows-amd64/`，包含免安装程序 `FineSub Review.exe`、NSIS 安装器、更新用归档、已签名的更新清单与 `install.ps1`；`scripts/verify_desktop.mjs` 校验 Ed25519 签名、清单版本、PE32+ x64 头、内嵌前端标记与 `SHA256SUMS`。
+- 图标由 `frontend/src/assets/icons/mika-source.png` 生成 Windows 全部尺寸（16–256），构建时写入可执行文件。
 - 检查更新的失败提示改为中文并区分原因：「更新源暂时拒绝访问（GitHub 每小时限 60 次）」「更新源还没有发布新版本」「无法连接更新源」三类各自给出可执行的建议；安装阶段失败单独措辞并明确「未安装任何内容，当前版本未改变」。无法归类的错误保留原文，便于排查。
 - 启动时的更新检查改为复用最近 24 小时内的结果，避免频繁重启或同一出口 IP 的多台机器耗尽 GitHub 每小时 60 次的接口配额；用户手动点「重新检查」以及「下载并安装」仍会实时请求，且安装前会再核对一次来源。
 - 审核队列、正文排版、空态样式、对比度与设置页操作记录等界面改动同批次一并发布。

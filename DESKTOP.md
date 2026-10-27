@@ -62,17 +62,15 @@ node scripts/package_desktop.mjs
 
 **已知限制：依赖 GitHub 与它的速率限制。** 未认证的 GitHub API 每小时 60 次（按 IP 计），每次检查消耗 1 次 API 请求（列 Release）加 1 次 `github.com` 的清单下载。为降低撞限概率，**启动时的自动检查会复用最近 24 小时内的结果**（存于用户数据目录的 `update-check.json`）；用户点“重新检查”或“下载并安装”时一律实时请求，且安装前会再核对一次来源，因此缓存的旧结论不会导致装错版本。`api.github.com` 在部分网络不可达，表现为「无法连接更新源」。当前**没有配置备用更新源**：`mygo` 支持把 `updates.url` 指向自己托管的固定清单地址（不改代码，只改 `mygo.json` 后重新构建），但那需要自行托管清单与归档，本项目尚未采用。
 
-0.4.0 起的更新步骤（MyGo 版）：
+0.4.0 起的更新步骤：
 
 1. 点击“下载并安装”，过程显示进度。`mygo` 的 Install 一步完成下载、Ed25519 验签和就地替换；Windows 上不延迟到退出，所以**关闭窗口不会撤销安装**，下次启动就是新版本。文案因此写“下载并安装”，不给一个取消后什么都不会取消的按钮。
 2. 签名、大小或归档格式不符时 Install 直接报错，已安装文件保持不动；错误必须显示给用户，不能当作更新成功。
 3. 安装成功后界面提示“更新已通过签名校验并安装”，点“立即重启”由 `mygo.App.Relaunch` 从原路径启动新版。重启前检查审核操作是否完成并保存草稿，未通过则不允许重启。
 4. 安装目录需可写（`mygo` 会先在该目录试建临时项，不可写即视为更新不可用）。Windows 上可能留下 `.old-<pid>` 残留文件，属已知行为，可手动删除。
-5. 应用内不再提供“另存新版”：`mygo` 从自己的暂存目录直接换入，没有可另存的归档。需要保留旧版请到 Release 页手动下载。
+5. 应用内不提供“另存新版”：`mygo` 从自己的暂存目录直接换入，没有可另存的归档。需要保留旧版请到 Release 页手动下载。
 
-签名体系迁移（重要）：0.2.x–0.3.0 的 Tauri 版客户端**收不到 MyGo 版的应用内更新**。两者的公钥、清单格式和标签规则都不同：Tauri 版用 minisign 公钥读 `releases/latest/download/latest.json`，MyGo 版用 Ed25519 公钥读 `releases/download/desktop-v<版本>/update-windows-amd64.json`，于是 Tauri 版永远看不到 MyGo 的清单，MyGo 版也不会认 Tauri 的签名。迁移必须手动到 Release 页下载 MyGo 版 EXE 打开一次，此后应用内更新才可用。0.2.0 用户同样需手动下载。
-
-正因为这一步必须手动，MyGo 版**不能用 0.3.0 作为版本号**：0.3.0 的 Tauri 构建已经存在（代码已提交，CI artifact 也可能被人手动装过），机器上装着 0.3.0 的人若拿到同样标 0.3.0 的 MyGo 版，更新检查会判为「已是最新」而永远不提示。所以 0.3.0 保持为 Tauri 版的历史版本，MyGo 版从 **0.4.0** 起算。
+客户端只认编入自身的 Ed25519 公钥：签名不符、公钥不符的更新一律拒绝，因此不要重新生成密钥对。
 
 仓库及 Release 公开，客户端没有 GitHub 令牌。更新仅下载新版桌面程序，不迁移云端数据库，云服务器无需增加更新接口。
 
@@ -80,10 +78,10 @@ node scripts/package_desktop.mjs
 
 后续发布步骤：
 
-1. 同步提升 `desktop/mygo.json` 的 `version`、`desktop/main.go` 的 `version` 常量、`frontend/package.json` 的版本（删掉 `frontend/src-tauri` 之后只剩这三处；删之前 `tauri.conf.json` 也要一起改，否则 `package_desktop.mjs` 的版本一致性校验会拦），并在 `CHANGELOG.md` 写一个与版本号一致的二级标题小节（`mygo build` 的发布说明和 `package_desktop.mjs` 的校验都读它，缺了会失败）。
+1. 同步提升三处版本号：`desktop/mygo.json` 的 `version`、`desktop/main.go` 的 `version` 常量、`frontend/package.json` 的版本，并在 `CHANGELOG.md` 写一个与版本号一致的二级标题小节（`mygo build` 的发布说明和 `package_desktop.mjs` 的校验都读它，缺了会失败；`package_desktop.mjs` 还会校验前两处版本一致）。
 2. 推送到 `feat/desktop`，等待 Windows desktop build 成功，下载 `finesub-review-windows` artifact。交付目录 `output/desktop-<版本>/` 含：`FineSub Review.exe`、`finesub-review-setup-<版本>-amd64.exe`、`finesub-review-<版本>-windows-amd64.tar.gz`、`update-windows-amd64.json`、`install.ps1`、`SHA256SUMS`。
 3. 在 GitHub 创建 **`desktop-v<版本>`** 标签的 Release，目标使用该次成功构建的提交，上传上述全部文件。确认附件齐全后发布为正式最新版（非预发布）——`mygo` 只解析非 draft、非 prerelease 的 `desktop-v*` Release，标签前缀写错客户端就找不到清单。不要覆盖已发布版本的文件。
-4. 确认该标签下的 `update-windows-amd64.json` 与 tar.gz 可匿名下载，并在上一版 MyGo 客户端执行检查、下载、验签与重启验收。审核队列和发布候选 API 需配套更新服务端 API 与 worker；仅更新 EXE 不会部署服务端。
+4. 确认该标签下的 `update-windows-amd64.json` 与 tar.gz 可匿名下载，并在上一版客户端执行检查、下载、验签与重启验收。审核队列和发布候选 API 需配套更新服务端 API 与 worker；仅更新 EXE 不会部署服务端。
 
 也可用 GitHub CLI 发布，以下路径和版本需替换为本次实际值：
 
@@ -93,11 +91,11 @@ gh release upload desktop-v0.4.0 output/desktop-0.4.0/*
 gh release edit desktop-v0.4.0 --draft=false --latest
 ```
 
-签名私钥是 mygo 生成的 `mygo-update.key`（Ed25519），本机放在 `desktop/mygo-update.key`（已在 `.gitignore`），另存于 GitHub Actions 的 `MYGO_UPDATER_PRIVATE_KEY` Secret——值是私钥本身，不是路径。公钥写在 `desktop/mygo.json` 的 `updates.publicKey` 并编入客户端。必须安全备份，不能提交、随包分发或重新生成替换，否则已安装客户端无法信任后续更新。旧的 Tauri minisign 私钥与 `TAURI_SIGNING_PRIVATE_KEY` 只对 Tauri 版有效，MyGo 版不再使用，也不要写进可提交的 `.env`。
+签名私钥是 mygo 生成的 `mygo-update.key`（Ed25519），本机放在 `desktop/mygo-update.key`（已在 `.gitignore`），另存于 GitHub Actions 的 `MYGO_UPDATER_PRIVATE_KEY` Secret——值是私钥本身，不是路径。公钥写在 `desktop/mygo.json` 的 `updates.publicKey` 并编入客户端。必须安全备份，不能提交、随包分发或重新生成替换，否则已安装客户端无法信任后续更新。也不要写进可提交的 `.env`。
 
 ## 验收
 
-0.3.0 已作为独立批次提交（`57e552e`，含 `17e9aa4`、`039c38c`、`2aef24b`、`b8ae00c`、`5a486a0`、`61317a9` 与 `c6e51b5`），那是 **Tauri 版**的历史记录，未发布 Release。此后把桌面外壳从 Tauri 换成 MyGo 的改动仍在工作区，版本号按 0.4.0 计算，尚未提交。本机已用 Go 1.27.3 与 mygo 0.7.1 跑通 `go build` 与 `mygo build`，**已产出可运行的免安装 EXE**：`desktop/build/windows-amd64/FineSub Review.exe`，12,482,560 字节（约 11.9 MiB），同目录还有安装器、tar.gz、签名清单和 `install.ps1`，不再依赖 Rust/MSVC。真实跨版本更新（MyGo 版→MyGo 新版，以及 Tauri 版手动迁移）仍需实机验收；浏览器侧更新验收用模拟 IPC，不能代替原生结果。当前记录见 [VALIDATION.md](VALIDATION.md)。
+0.4.0 已提交（`4ea7b16` 保存完整源码基线，`6286334` 清理过时的桌面端说明），未发布 Release。本机用 Go 1.27.3 与 mygo 0.7.1 跑通 `go build` 与 `mygo build`，**可产出免安装 EXE**：`desktop/build/windows-amd64/FineSub Review.exe`，12,482,560 字节（约 11.9 MiB），同目录还有安装器、tar.gz、签名清单和 `install.ps1`。真实更新链路（旧版→新版的应用内升级）仍需用两个 `desktop-v*` 版本在实机验收；浏览器侧的更新验收用模拟 IPC，不能代替原生结果。当前记录见 [VALIDATION.md](VALIDATION.md)。
 
 2026-10-12 免安装版 0.2.1：[构建 38156586017](https://github.com/Yuuu0109/finesub-review/actions/runs/38156586017) 原生测试、构建及独立 EXE 签名全部通过。[Release](https://github.com/Yuuu0109/finesub-review/releases/tag/v0.2.1) 已发布，`-portable.exe` 为 18,842,112 字节，SHA-256 为 `23a61b79216836ec9edf18b03dac210c7469dcb92b434d4862325a17b37f16d1`。本机直接启动交付 EXE，真实 IPC 返回 0.2.1；签名验证、篡改拒绝、匿名下载一致性检查通过。更新下载、错误重试与保存提示通过模拟 IPC 验证，原生测试确认不覆盖已有文件。本机原生 GitHub 检查遇到连接失败（公开清单与 EXE 手动下载正常）；尚未完成真实跨版本下载验收。
 
@@ -117,4 +115,4 @@ gh release edit desktop-v0.4.0 --draft=false --latest
 
 本机验证了同次构建的原生程序启动、真实 Tauri 版本 IPC、访问公开 GitHub 更新源并显示“已是最新版本”。安装包签名和 SHA-256 校验通过，修改一个字节后签名验证失败；匿名下载的清单与安装包和本机产物一致。前端测试 4 项、后端回归 10 项通过，更新提示、确认下载、进度、错误重试及后台检查中打开窗口通过浏览器模拟 IPC 验证。尚未执行真实跨版本覆盖安装、卸载或云端业务验收。
 
-实现依据：[MyGo 0.7.1](https://github.com/egoist/mygo)（`mygo build`、updater、fetch 插件与 `mygo://` 自定义协议）、[Ed25519](https://pkg.go.dev/crypto/ed25519)。2026-10-27 之前的 Tauri 版依据见该日之前的文档版本（HTTP 插件、文件对话框、更新插件、self-replace），MyGo 版不再使用这些依赖。
+实现依据：[MyGo 0.7.1](https://github.com/egoist/mygo)（`mygo build`、updater、fetch 插件与 `mygo://` 自定义协议）、[Ed25519](https://pkg.go.dev/crypto/ed25519)。

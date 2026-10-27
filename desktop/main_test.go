@@ -16,9 +16,9 @@ import (
 	"github.com/egoist/mygo"
 )
 
-// The session cookie the access gate sets must come back on the next request:
-// that is what `credentials: "include"` used to mean, and the whole login flow
-// depends on it.
+// The session cookie the access gate sets must come back on the next request,
+// which is what the page asks for with `credentials: "include"`; the whole
+// login flow depends on it.
 func TestReviewClientKeepsSessionCookie(t *testing.T) {
 	var gotCookie string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,8 +105,8 @@ func TestOpenExternalRefusesNonWebSchemes(t *testing.T) {
 	}
 }
 
-// The frontend must be served with the policy Tauri used to apply, and the
-// policy must still let the app's own bundle and styles through.
+// The frontend must be served with the app's policy, and that policy must
+// still let the app's own bundle and styles through.
 func TestFrontendServesSecurityHeaders(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>t</title>"), 0o644); err != nil {
@@ -129,10 +129,10 @@ func TestFrontendServesSecurityHeaders(t *testing.T) {
 			t.Errorf("policy lacks %q", directive)
 		}
 	}
-	// The Tauri bridge's ipc: origin does not exist here: MyGo's bridge is
-	// window.chrome.webview.postMessage, which is not a network fetch.
+	// The bridge is window.chrome.webview.postMessage, which is not a network
+	// fetch, so the policy needs no ipc: origin.
 	if strings.Contains(contentSecurityPolicy, "ipc:") {
-		t.Error("policy still allows the Tauri ipc: origin, which MyGo does not use")
+		t.Error("policy allows an ipc: origin, but the bridge does not use one")
 	}
 }
 

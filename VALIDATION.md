@@ -1,6 +1,6 @@
-# 桌面外壳迁移 — MyGo 版 0.4.0（当前工作区，未提交）
+# 桌面版 0.4.0
 
-2026-10-27。桌面外壳由 Tauri 2 换成 MyGo 0.7.1（Go + 系统 WebView2），目标是让「构建桌面版必须装 Rust/MSVC」变成「有 Go 就能构建」，同时保留原有会话、CSRF 和验签更新行为。版本号定为 **0.4.0**：换框架属于不兼容变更（签名体系 minisign→Ed25519、更新源固定 `latest.json`→GitHub API 解析 `desktop-v*`、产物目录全变），且 0.3.0 的 Tauri 构建已存在、可能被人从 CI artifact 装过，同号会让那批机器判为「已是最新」。0.3.0 保持为 Tauri 版的历史版本。以下为本机实际执行结果；未提交、未推送、未新建 Release。
+2026-10-27。以下为本机对桌面客户端的实际执行结果，覆盖 Go 与前端测试、构建、图标与更新链路的可验证部分；已提交（`4ea7b16`），未推送、未发布 Release。
 
 | 验证项 | 结果与边界 |
 | --- | --- |
@@ -9,25 +9,29 @@
 | 前端构建 | `pnpm --dir frontend build`（`vue-tsc --noEmit` + Vite）通过 |
 | 便携构建 | `node scripts/embed_frontend.mjs` → `go build -trimpath`：`desktop/ui/` 先清空再拷贝（保留 `.gitkeep`），Vite 旧哈希资源不残留；产物可启动，侧栏品牌图标正常 |
 | 签名发布构建 | `mygo build`：产出 `desktop/build/windows-amd64/` 下的 EXE、NSIS 安装器、tar.gz、`update-windows-amd64.json`（Ed25519 已签名）和 `install.ps1`，以及 `desktop/build/SHA256SUMS` |
-| 图标 | 4 个被跟踪图标搬到 `frontend/src/assets/icons/`；MyGo 从 `mika-source.png` 生成 16–256 各尺寸并写入 EXE（exe 内 11 个 PNG 块）；`frontend/src` 内 `src-tauri` 引用已归零 |
-| 后端与云端 | 本轮**未**重跑后端回归、PostgreSQL 与容器验收。这些结果不因外壳迁移改变，但也没有在本轮复跑，不得当作本轮结果引用 |
-| 真实更新链路 | **未验证**。需要先用 `desktop-v` 标签发布两个版本，才能在实机验证「MyGo 旧版→MyGo 新版」；Tauri 版→MyGo 版只能手动下载，应用内不会提示 |
+| 图标 | 图标位于 `frontend/src/assets/icons/`（`icon.ico`、`icon.png`、`mika-source.png`、`source.svg`）；MyGo 从 `mika-source.png` 生成 16–256 各尺寸并写入 EXE（exe 内 11 个 PNG 块） |
+| 后端与云端 | 本轮**未**重跑后端回归、PostgreSQL 与容器验收。这些结果不受桌面客户端代码影响，但也没有在本轮复跑，不得当作本轮结果引用 |
+| 真实更新链路 | **未验证**。需要先用 `desktop-v` 标签发布两个版本，才能在实机验证「旧版→新版」的应用内升级 |
 
 本机证据：`desktop/build/windows-amd64/` 与 `desktop/build/SHA256SUMS`（不入库，`desktop/build/` 已在 `.gitignore`）。`desktop/ui/` 是 `frontend/dist` 的拷贝，同样不入库，只保留 `desktop/ui/.gitkeep` 供 `go:embed all:ui` 在干净检出中编译。免安装 EXE 实测 12,482,560 字节（约 11.9 MiB）。
 
 `scripts/verify_desktop.mjs` 的内嵌前端判别：旧的 `exe.includes("FineSub")` **无效**——`FineSub` 来自 `desktop/main.go` 的 `const appName` 与窗口标题，无页面的构建里同样存在，评审与主程各自构建过只含 `.gitkeep` 的 EXE 对照确认。现改为同时检查 `assets/`（Vite 输出目录名）与 `index-`（Vite 内容哈希入口名），两者在无前端 EXE 中均不存在。改动这类检查串后必须做反向验证（让它查一个不存在的串，确认脚本变红），否则又交付一条永远绿的检查。
 
-## 待批准的提交范围（MyGo 迁移）
+## 本批改动范围
 
-分支 `feat/desktop`。已跟踪文件修改：`.github/workflows/desktop.yml`、`.gitignore`、`frontend/package.json`、`frontend/pnpm-lock.yaml`、`frontend/pnpm-workspace.yaml`、`frontend/src/App.vue`、`frontend/src/DesktopRoot.vue`、`frontend/src/components/Brand.vue`、`frontend/src/components/DesktopUpdate.vue`、`frontend/src/components/DownloadLink.vue`、`frontend/src/main.ts`、`frontend/src/pages/Entries.vue`、`frontend/src/pages/Imports.vue`、`frontend/src/pages/ReviewPage.vue`、`frontend/src/style.css`、`frontend/src/transport.ts`、`frontend/tests/transport.test.ts`、`scripts/package_desktop.mjs`、`scripts/verify_desktop.mjs`。
+本批为 0.4.0 的桌面客户端与相关页面调整，已随 `4ea7b16`（完整源码基线）提交，分支 `feat/desktop`。
 
-新增未跟踪：`desktop/`（`go.mod`、`go.sum`、`main.go`、`main_test.go`、`mygo.json`）、`frontend/src/assets/icons/`、`frontend/tests/transport-browser.test.ts`、`scripts/embed_frontend.mjs`。
+桌面客户端相关：`.github/workflows/desktop.yml`、`.gitignore`、`.dockerignore`、`frontend/package.json`、`frontend/pnpm-lock.yaml`、`frontend/pnpm-workspace.yaml`、`scripts/package_desktop.mjs`、`scripts/verify_desktop.mjs`、`scripts/embed_frontend.mjs`。
 
-`frontend/src-tauri/` 目录与残留引用待整体删除（同时清掉 `frontend/package.json` 的 `@tauri-apps/*` 依赖与 `desktop:dev`/`desktop:build` 脚本，并重算 `pnpm-lock.yaml`）；删除时同步清理其他文档里指向 Tauri 的路径（`DESKTOP.md` 与本文件本轮已改为 MyGo 流程）。0.3.0 已作为独立批次提交（`17e9aa4`、`039c38c`、`2aef24b`、`b8ae00c`、`5a486a0`、`61317a9`、`57e552e`、`c6e51b5`），那是 Tauri 版的历史记录、未发布 Release；本文件下方的 2026-10-22 记录据此保留为历史。
+前端与页面：`frontend/src/App.vue`、`frontend/src/DesktopRoot.vue`、`frontend/src/components/Brand.vue`、`frontend/src/components/DesktopUpdate.vue`、`frontend/src/components/DownloadLink.vue`、`frontend/src/main.ts`、`frontend/src/pages/Entries.vue`、`frontend/src/pages/Imports.vue`、`frontend/src/pages/ReviewPage.vue`、`frontend/src/style.css`、`frontend/src/transport.ts`、`frontend/src/assets/icons/`、`frontend/tests/transport.test.ts`、`frontend/tests/transport-browser.test.ts`。
+
+`desktop/`：`go.mod`、`go.sum`、`main.go`、`main_test.go`、`mygo.json`、`ui/.gitkeep`（`ui/` 下其余内容是构建时从 `frontend/dist` 拷入的，不入库）。
+
+上方 2026-10-22 的记录在此前已经作为 0.3.0 提交（未发布 Release），其内容保持原样作为历史。
 
 # 审核流程与免安装更新 — 2026-10-22
 
-代码基线为 `feat/desktop@f579532dbc06554834c95f94189cb3b4141e1380`，本轮修改版本为 0.3.0。截至本记录写下时尚未提交、推送、部署或发布 Release；此后这批已提交为 0.3.0（未发布 Release），并被 0.4.0 的 MyGo 外壳取代。测试只使用独立数据库、临时上传和知识库副本。
+代码基线为 `feat/desktop@f579532dbc06554834c95f94189cb3b4141e1380`，本轮修改版本为 0.3.0，当时尚未提交、推送、部署或发布 Release。测试只使用独立数据库、临时上传和知识库副本。
 
 | 本轮验证 | 结果与边界 |
 | --- | --- |
@@ -47,7 +51,7 @@
 
 已补齐当前本机 schema 6 知识库的兼容验证。0.6.0 参考源码对应 `eb642f25e7bc83cb18c4e7a4e0289d410c643fbc`，schema、apply/envelope 和三份预设均逐文件核对该提交；新补丁只应用于隔离引擎。真实库通过 SQLite 在线备份生成测试快照，原有 204 个文件内容哈希保持；只读 SQLite 连接生成了空 WAL 辅助文件，没有修改知识数据。schema 5 使用历史副本独立回归，两版的三个样例核验声明均保持 6→6、10→10、7→7，节点类型、匹配项、归属边、核验/分享政策及证据历史保持。
 
-注（2026-10-27）：上表「交付校验脚本」与「Windows 原生程序」两行已被外壳替换改写——现在用 `go build` / `mygo build` 在本机构建，`scripts/verify_desktop.mjs` 校验 MyGo 产物（清单、Ed25519 验签、PE 头、内嵌前端、SHA256SUMS），不再需要 Rust/MSVC。上表数值仍是 2026-10-22 当次执行记录，没有重跑，不要按旧路径 `frontend/src-tauri/target/release/` 去找产物。
+注（2026-10-27）：上表「交付校验脚本」与「Windows 原生程序」两行按当前构建方式更新——本机用 `go build` / `mygo build` 直接构建，`scripts/verify_desktop.mjs` 校验产物（清单、Ed25519 验签、PE 头、内嵌前端、SHA256SUMS）。上表数值仍是 2026-10-22 当次执行记录，没有重跑。
 
 文案精简后重新通过 7 项前端测试、类型检查、生产构建、真实浏览器业务流程及模拟 IPC 更新验证；未改后端逻辑，上表 91 项后端结果沿用本轮此前的 schema 6 完整回归。截图等待提示消失、回到页首并关闭过渡动画后保存。
 
@@ -55,7 +59,7 @@
 
 ## 待批准的提交范围（2026-10-22 历史批次，已提交）
 
-以下包含本次追加兼容修改、文案精简和此前尚未提交的审核、桌面优化。分支 `feat/desktop`。**这一批已作为 0.3.0 提交（见本文件开头的提交列表），下面的清单是当时的分组记录，不再是待批准状态。** 测试产物、知识库快照、原生引擎副本和密钥均不在这份清单中。
+以下包含本次追加兼容修改、文案精简和此前尚未提交的审核、桌面优化。分支 `feat/desktop`。**这一批已作为 0.3.0 提交，下面的清单是当时的分组记录，不再是待批准状态。** 测试产物、知识库快照、原生引擎副本和密钥均不在这份清单中。
 
 ### 1. 审核工作流与页面
 
@@ -87,7 +91,7 @@
 
 建议提交信息：`[feat](desktop):完善免安装签名更新与原位重启`
 
-整文件（该批次已随 0.3.0 提交，其中 Tauri 外壳随后被 MyGo 版替换，见本文件开头）：
+整文件（该批次已随 0.3.0 提交）：
 
 - `.github/workflows/desktop.yml`
 - `frontend/package.json`
@@ -97,9 +101,9 @@
 - `scripts/verify_desktop.mjs`
 - `scripts/verify_desktop_ui.mjs`
 
-Tauri 外壳的六个文件（`frontend/src-tauri/Cargo.toml`、`Cargo.lock`、`tauri.conf.json`、`src/main.rs`、`src/updates.rs`、`src/portable.rs`）属于该批次，现已由 `desktop/` 下的 `main.go`、`main_test.go`、`go.mod`、`go.sum`、`mygo.json` 取代；`src-tauri` 目录待删除，不要再按旧路径核对。
-
 按代码块：`frontend/src/main.ts` 的入口加载修复；`DESKTOP.md`、`CHANGELOG.md` 的桌面更新说明。依赖第 1 组的持久草稿。前端构建、模拟 IPC 和已有包的验签检查通过；真实替换重启仍需实机验收，不能当成 EXE 交付完成。
+
+注（2026-10-27）：清单中的 `scripts/verify_desktop_ui.mjs` 是按当时实现写的，当前客户端已改用 `window.mygo` 调用面，**该脚本正在重写、尚未重新执行，其结果不可引用**（详见本文件「复现浏览器检查」一节）。
 
 ### 3. FineSub 0.6.0 / schema 6 兼容
 
@@ -136,10 +140,12 @@ $env:PLAYWRIGHT_MODULE = '填写 Playwright 模块目录'
 $env:PLAYWRIGHT_CHANNEL = 'msedge'
 $env:PYTHONUTF8 = '1'
 node scripts/verify_workbench.mjs
-node scripts/verify_desktop_ui.mjs
+node scripts/verify_desktop_ui.mjs   # 正在按当前外壳重写，重写完成前不要当作已通过的验收
 # `mygo build` 之后执行（读 desktop/build；package_desktop.mjs 只是复制到 output/）：
 node scripts/verify_desktop.mjs
 ```
+
+**`scripts/verify_desktop_ui.mjs` 当前处于重写状态，其结果不可引用。** 该脚本原先模拟的是旧外壳的 IPC（`window.__TAURI_INTERNALS__`、`plugin:http|fetch`、`check_desktop_update` 等命令），并断言旧文案「下载更新」「稍后」「正在下载 50%」与写死的 `v0.3.0`；当前客户端调用的是 `window.mygo` 的 `shell.CheckUpdate`/`shell.DownloadUpdate`/`shell.ApplyUpdate`/`shell.Version`，文案与版本号也已不同。脚本与实际调用面是两套接口，直接运行必然全红，**它的通过与否不能说明桌面更新界面是否可用**。重写后需要 mock `window.mygo`、断言当前文案与版本，并实际执行过才可引用。上面表格中 2026-10-22 的「桌面更新界面」一行记录的是那次执行的结果，早于当前实现，不能作为现状。
 
 0.3.0 的审核队列、对比和候选检查需要服务端 API 与 worker 同步更新。仅更新 EXE 不会更新云端服务。普通成员仍只提交版本绑定意见，管理员独立裁决；原生更新和公开 Release 验收不在上述浏览器结果之内。
 
