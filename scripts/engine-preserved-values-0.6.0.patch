@@ -1,0 +1,140 @@
+--- a/third_party/finesub/src/finesub/llm/knowledge/node/envelope.py
++++ b/third_party/finesub/src/finesub/llm/knowledge/node/envelope.py
+@@ -19,6 +19,7 @@
+ OPS: tuple[str, ...] = (
+     "create",
+     "update",
++    "update_preserved_value",
+     "add_item",
+     "remove_item",
+     "add_membership",
+@@ -31,6 +32,7 @@
+ _REQUIRED: dict[str, tuple[str, ...]] = {
+     "create": ("kind", "payload"),  # parent/section required unless kind == subject (checked at fold)
+     "update": ("id", "set"),
++    "update_preserved_value": ("id", "value"),
+     "add_item": ("id", "field", "value"),
+     "remove_item": ("item",),
+     "add_membership": ("id", "parent", "section"),
+--- a/third_party/finesub/src/finesub/llm/knowledge/node/apply.py
++++ b/third_party/finesub/src/finesub/llm/knowledge/node/apply.py
+@@ -72,6 +72,7 @@
+     ops: list[int] = field(default_factory=list)
+     retired: bool = False
+     merged_into: str | None = None
++    preserved_value: bool = False
+ 
+ 
+ @dataclass
+@@ -806,6 +807,41 @@
+     return gist[:60] + ("…" if len(gist) > 60 else "")
+ 
+ 
++PRESERVED_ENGINE_BASE = "eb642f25e7bc83cb18c4e7a4e0289d410c643fbc"
++PRESERVED_VALUES_COMPAT_VERSION = 1
++PRESERVED_VALUE_FIELDS = {"note": "text", "term": "desc", "fact": "value", "event": "description", "relation": "description"}
++
++
++def _validate_preserved_value(store, overlay, node):
++    """An opt-in existing value update; never creates, retypes or relocates."""
++    stored = store.node(node.local_id, overlay.read_rev)
++    field_name = PRESERVED_VALUE_FIELDS.get(node.kind)
++    if stored is None or node.is_new or stored.kind != node.kind or field_name is None or node.retired:
++        raise ValueError("preserved value requires an existing supported node")
++    if node.visibility != stored.visibility:
++        raise ValueError("preserved value cannot change visibility")
++    old = {k: v for k, v in stored.payload.items() if k != field_name}
++    new = {k: v for k, v in node.payload.items() if k != field_name}
++    if old != new or not isinstance(node.payload.get(field_name), str) or not node.payload[field_name].strip():
++        raise ValueError("preserved value cannot change identity, labels or other payload fields")
++    identities = {"本名", "别名", "类型", "读音", "読み", "読み方"}
++    identity = str(stored.payload.get("label") or stored.payload.get("field") or "").strip(" -\t")
++    if node.kind == "note" and not identity:
++        identity = str(stored.payload.get("text") or "").lstrip(" -\t").split(":", 1)[0].split("：", 1)[0]
++    if identity in identities:
++        raise ValueError("preserved value cannot update a matching identity field")
++    from .importer import extract_misheard
++    if extract_misheard(str(stored.payload.get(field_name) or "")) != extract_misheard(node.payload[field_name]):
++        raise ValueError("preserved value cannot change derived misheard matching items")
++    if any(m.child_id == node.local_id for m in overlay.memberships.values()):
++        raise ValueError("preserved value cannot modify memberships")
++    if any(item.local_id == node.local_id for item in overlay.items.values()):
++        raise ValueError("preserved value cannot modify matching items")
++    # Only the existing imported kind is grandfathered. New kinds, structure,
++    # budgets, uniqueness, references, CAS and all other overlay checks remain.
++    validate_payload(node.kind, node.payload, strict=node.kind not in ("fact", "event", "relation"))
++
++
+ def _fold(store: KnowledgeStore, overlay: Overlay, resolver: _Resolver, index: int, op: dict[str, Any]) -> None:
+     name = op["op"]
+     if name == "create":
+@@ -838,6 +874,19 @@
+             overlay.memberships[mid] = OMembership(
+                 mid, parent_id, local_id, op["section"], int(op.get("order_key", 1_000_000 + index)), None, True, [index]
+             )
++        return
++    if name == "update_preserved_value":
++        local_id, expected = resolver.node(op["id"])
++        if expected is None:
++            raise ValueError("preserved value requires a versioned node binding")
++        node = _load_node(store, overlay, local_id, expected)
++        field_name = PRESERVED_VALUE_FIELDS.get(node.kind)
++        if field_name is None or node.is_new:
++            raise ValueError("unsupported preserved node kind")
++        node.payload[field_name] = op["value"]
++        node.preserved_value = True
++        _validate_preserved_value(store, overlay, node)
++        node.ops.append(index)
+         return
+     if name == "update":
+         local_id, expected = resolver.node(op["id"])
+@@ -1125,6 +1174,12 @@
+         return ONode(local_id, stored.kind, dict(stored.payload), stored.visibility, stored.valid_from_rev, False)
+ 
+     for node in overlay.nodes.values():
++        if node.preserved_value:
++            try:
++                _validate_preserved_value(store, overlay, node)
++            except ValueError as exc:
++                problems.append(("node", node.local_id, str(exc)))
++            continue
+         if node.retired:
+             continue
+         if not node.is_new:
+@@ -1292,6 +1347,7 @@
+     *,
+     revision_kind: str = "harness",
+     note: str = "",
++    atomic: bool = False,
+ ) -> ApplyResult:
+     overlay, problems = preview(store, envelope)
+     result = ApplyResult(rev=None, rejected_ops=list(overlay.rejected), created=dict(overlay.created))
+@@ -1306,6 +1362,10 @@
+         result.rolled_back = True
+         result.rollback_reason = "overlay invalid before CAS: " + "; ".join(f"{e} {i}: {p}" for e, i, p in problems)
+         return result
++    if atomic and result.rejected_ops:
++        result.rolled_back = True
++        result.rollback_reason = "atomic envelope has rejected operations"
++        return result
+     if not _overlay_has_writes(overlay):
+         return result  # everything resolved away; no empty revision
+ 
+@@ -1316,11 +1376,17 @@
+         # `knowledge_write_lock`'s loser semantics.
+         with _apply_queue(store), store.begin(revision_kind, task_id=envelope.task_id, proposal_hash=envelope.proposal_hash(), base_rev=envelope.knowledge_read_rev, note=note) as txn:
+             _drop_stale(store, overlay, result)
++            if atomic and (result.conflicts or result.rejected_ops):
++                raise _Rollback("atomic envelope has stale or rejected operations")
+             # Again, against the authoritative in-txn state: a competing label
+             # can land between the preview above and our BEGIN IMMEDIATE.
+             _resolve_label_conflicts(store, overlay, result)
++            if atomic and (result.conflicts or result.rejected_ops):
++                raise _Rollback("atomic envelope has conflicting operations")
+             leftover = validate_overlay(store, overlay)
+             _drop_dependents(overlay, leftover, result)
++            if atomic and (result.conflicts or result.rejected_ops):
++                raise _Rollback("atomic envelope has rejected dependent operations")
+             leftover = validate_overlay(store, overlay)
+             if leftover:
+                 raise _Rollback("overlay invalid after conflict removal: " + "; ".join(f"{e} {i}: {p}" for e, i, p in leftover))

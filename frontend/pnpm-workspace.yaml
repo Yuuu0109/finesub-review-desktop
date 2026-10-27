@@ -1,0 +1,11 @@
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@tauri-apps/plugin-fs@2.7.0'
+  - '@mygo-plugins/fetch@0.7.1'
+  - mygo-runtime@0.7.1
+# Windows 未启用开发者模式时无法创建符号链接，pnpm 默认的 isolated 布局会在
+# 安装和运行脚本的依赖预检阶段失败（UNKNOWN: unknown error, symlink）。
+# hoisted 布局不建链接；并关闭运行脚本前的自动安装。
+nodeLinker: hoisted
+verifyDepsBeforeRun: false

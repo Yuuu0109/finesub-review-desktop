@@ -1,0 +1,28 @@
+{
+  "name": "finesub-review-web",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:desktop": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@mygo-plugins/fetch": "0.7.1",
+    "dompurify": "^3.2.0",
+    "markdown-it": "^14.1.0",
+    "mygo-runtime": "0.7.1",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.0",
+    "@types/node": "^22.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "prettier": "3.9.6",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0",
+    "vue-tsc": "^3.0.0"
+  }
+}

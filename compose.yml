@@ -1,0 +1,53 @@
+name: finesub-review
+x-app: &app
+  image: finesub-review:0.3.0
+  build: .
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: postgresql+psycopg://review:${POSTGRES_PASSWORD:?请在 .env 设置数据库密码}@db:5432/finesub_review
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    # 反向代理（Caddy 或宿主机 Nginx）写入 X-Forwarded-For；限流按键是
+    # request.client.host，必须来自真实客户端 IP。端口只发布到 127.0.0.1。
+    # 127.0.0.1,::1 必须保留：uvicorn 默认就信任它们，宿主机 Nginx 走本机转发，
+    # 去掉会让所有客户端归入同一个限流桶。私网段是 Docker 网络里的 Caddy。
+    # 不用 *：uvicorn 在 * 下取 XFF 最左值（客户端可伪造），给出具体来源后
+    # 它从右往左取第一个不可信地址，追加式反代也能取到真值。
+    # 反代不在这些地址时，把它改成反代的实际地址。
+    FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1,::1,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}
+  depends_on:
+    db:
+      condition: service_healthy
+  security_opt:
+    - no-new-privileges:true
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finesub_review
+      POSTGRES_USER: review
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 设置数据库密码}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U review -d finesub_review"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  app:
+    <<: *app
+    ports:
+      - "127.0.0.1:${REVIEW_PORT:-8766}:8765"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  postgres-data:

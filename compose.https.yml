@@ -1,0 +1,23 @@
+services:
+  app:
+    environment:
+      # HTTPS 部署下会话 Cookie 必须带 Secure。
+      COOKIE_SECURE: "true"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      REVIEW_DOMAIN: ${REVIEW_DOMAIN:?请设置域名}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  caddy-data:
+  caddy-config:

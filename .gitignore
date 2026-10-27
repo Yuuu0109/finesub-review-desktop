@@ -1,0 +1,30 @@
+.venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+data/
+test-results/
+.cache/
+import-packages/
+*.tar.gz
+*.zip
+target/
+.env.*
+!.env.example
+.secrets/
+output/
+
+# Desktop shell (desktop/): build products and verification screenshots.
+# The 16 MB executable must never be committed; CI builds it from source.
+desktop/*.exe
+desktop/*.png
+desktop/build/
+desktop/mygo-update.key
+desktop/mygo.ts
+# The frontend copied in for embedding; .gitkeep stays so `go:embed all:ui`
+# compiles in a checkout that has no build.
+desktop/ui/*
+!desktop/ui/.gitkeep

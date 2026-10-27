@@ -1,0 +1,115 @@
+{
+  "repository": "Yuuu0109/nonoka-sub-x",
+  "commit": "af32b0145f70a98199b246704076c384bfda95ee",
+  "version": "0.5.1",
+  "categories": {
+    "common": {
+      "sections": [
+        {
+          "name": "档案",
+          "body_kinds": [
+            "note"
+          ]
+        },
+        {
+          "name": "待归类",
+          "staging": true,
+          "body_kinds": [
+            "note",
+            "term"
+          ]
+        }
+      ],
+      "default_section": {
+        "body_kinds": [
+          "term"
+        ]
+      }
+    },
+    "streamer": {
+      "sections": [
+        {
+          "name": "档案",
+          "body_kinds": [
+            "note"
+          ]
+        },
+        {
+          "name": "直播内容",
+          "body_kinds": [
+            "note"
+          ]
+        },
+        {
+          "name": "频道用语",
+          "body_kinds": [
+            "term"
+          ]
+        },
+        {
+          "name": "特点",
+          "body_kinds": [
+            "note"
+          ]
+        },
+        {
+          "name": "人际关系",
+          "body_kinds": [
+            "term"
+          ]
+        },
+        {
+          "name": "待归类",
+          "staging": true,
+          "body_kinds": [
+            "note",
+            "term"
+          ]
+        }
+      ]
+    },
+    "style": {
+      "sections": [
+        {
+          "name": "档案",
+          "body_kinds": [
+            "note"
+          ]
+        },
+        {
+          "name": "约定",
+          "body_kinds": [
+            "note"
+          ],
+          "max_lines": 20,
+          "max_body_chars": 200
+        },
+        {
+          "name": "正例",
+          "body_kinds": [
+            "note"
+          ],
+          "labels_from": "约定",
+          "max_lines": 20,
+          "max_body_chars": 200
+        },
+        {
+          "name": "反例",
+          "body_kinds": [
+            "note"
+          ],
+          "labels_from": "约定",
+          "max_lines": 20,
+          "max_body_chars": 200
+        },
+        {
+          "name": "待归类",
+          "staging": true,
+          "body_kinds": [
+            "note"
+          ]
+        }
+      ]
+    }
+  }
+}

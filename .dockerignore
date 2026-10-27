@@ -1,0 +1,16 @@
+.venv
+.cache
+data
+test-results
+.git
+frontend/node_modules
+frontend/dist
+backend/**/__pycache__
+backend/.pytest_cache
+.env
+.secrets
+output
+# 桌面外壳（MyGo）的构建产物：CI 或本机生成，镜像不需要。
+desktop/build
+desktop/ui
+desktop/*.exe

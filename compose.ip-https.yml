@@ -1,0 +1,24 @@
+services:
+  app:
+    environment:
+      COOKIE_SECURE: "true"
+  worker:
+    environment:
+      COOKIE_SECURE: "true"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      REVIEW_DOMAIN: ${REVIEW_DOMAIN:?请设置服务器公网 IP}
+    ports:
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile.ip:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  caddy-data:
+  caddy-config:

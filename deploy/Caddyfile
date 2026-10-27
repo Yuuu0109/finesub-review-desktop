@@ -1,0 +1,12 @@
+{$REVIEW_DOMAIN} {
+    request_body {
+        max_size 32MB
+    }
+    encode zstd gzip
+    reverse_proxy app:8765 {
+        # Overwrite, never append. The app resolves X-Forwarded-For from the
+        # right, first untrusted address, so a client-supplied address must not
+        # survive the hop; rate limiting keys on the resolved address.
+        header_up X-Forwarded-For {remote_host}
+    }
+}
