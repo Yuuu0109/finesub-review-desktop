@@ -40,8 +40,9 @@ CI 还会运行 `--smoke-test`：使用临时客户端数据且不连接审核�
 go install github.com/egoist/mygo/cmd/mygo@v0.7.1
 mygo build
 cd ..
-node scripts/verify_desktop.mjs
 node scripts/package_desktop.mjs
+$version = (Get-Content desktop/mygo.json -Raw | ConvertFrom-Json).version
+node scripts/verify_desktop.mjs "output/desktop-$version"
 ```
 
 `MYGO_UPDATER_PRIVATE_KEY` 为现有 Ed25519 私钥内容，不能提交到仓库或打入程序。MyGO 生成的更新签名与 Windows Authenticode 证书签名不同。

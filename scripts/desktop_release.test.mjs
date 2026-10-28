@@ -97,6 +97,10 @@ test("checksums may not silently omit the portable executable", async (t) => {
 
 test("staging checksums cover every distributed attachment", async (t) => {
   const f = await fixture(t);
+  // MyGO's source SHA256SUMS covers uploads, not the portable EXE or manifest.
+  // Staging must produce the complete distributable checksums before verification.
+  const uploaded = [f.archiveName, "finesub-review-setup-0.5.0-amd64.exe", "install.ps1"];
+  await writeFile(join(f.root, "desktop/build/SHA256SUMS"), uploaded.map((name) => `${hash(f.files[name])}  windows-amd64/${name}\n`).join(""));
   const result = run(f, "package_desktop.mjs");
   assert.equal(result.status, 0, result.stderr);
   const folder = join(f.root, "output/desktop-0.5.0");

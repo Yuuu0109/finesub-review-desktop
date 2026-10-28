@@ -3,13 +3,14 @@
  *
  * `mygo build` already writes everything a release needs into
  * desktop/build/windows-amd64/: the portable executable, the NSIS installer,
- * the tar.gz the updater installs from, the signed update manifest, install.ps1
- * and SHA256SUMS. This script only:
+ * the tar.gz the updater installs from, the signed update manifest and install.ps1.
+ * MyGO's SHA256SUMS is in the parent build directory and covers its upload set.
+ * This script:
  *   - checks the signed manifest agrees with desktop/mygo.json;
  *   - confirms CHANGELOG.md has a section for the version, since `mygo build`
  *     takes the release notes from it;
  *   - copies the artifacts into output/desktop-<version>/, the folder the
- *     release instructions upload from.
+ *     release instructions upload from, and writes checksums for every attachment.
  *
  * Run `mygo build` first (with MYGO_UPDATER_PRIVATE_KEY set to sign).
  */
