@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { scopedDraftKey } from "../transport";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { api, post, date, labels, type Detail, type RecordItem } from "../api";
 import { useApp } from "../context";
@@ -59,10 +58,10 @@ const latestDecision = computed(() =>
   detail.value?.decisions.find((d) => d.revision_id === detail.value?.entry.id),
 );
 const draftKey = computed(
-  () => scopedDraftKey(`finesub-draft:${user.value?.id}:${detail.value?.entry.id}`),
+  () => `finesub-draft:${user.value?.id}:${detail.value?.entry.id}`,
 );
 const editDraftKey = computed(
-  () => scopedDraftKey(`finesub-edit:${user.value?.id}:${props.entryId}`),
+  () => `finesub-edit:${user.value?.id}:${props.entryId}`,
 );
 const editStale = computed(() => editBaseRevision.value !== detail.value?.entry.id);
 const editDirty = computed(() => !!detail.value && isCurrent.value && (
@@ -73,7 +72,7 @@ const diffCounts = computed(() => ({
   added: detail.value?.diff.filter(l => l.startsWith('+') && !l.startsWith('+++')).length || 0,
   removed: detail.value?.diff.filter(l => l.startsWith('-') && !l.startsWith('---')).length || 0,
 }));
-const decisionDraftKey = computed(() => scopedDraftKey(`finesub-decision:${user.value?.id}:${detail.value?.entry.id}`));
+const decisionDraftKey = computed(() => `finesub-decision:${user.value?.id}:${detail.value?.entry.id}`);
 // 草稿按 400ms 合并写入：大词条一次按键就 JSON.stringify 2MB 并同步写 localStorage 会卡顿。
 const pendingDrafts = new Map<string, unknown>();
 const writtenDrafts = new Map<string, string>();
@@ -138,7 +137,7 @@ async function load(version = "") {
         editBaseRevision.value = saved.baseRevision || d.entry.id;
         editSource.value = saved.source;
         deleteEntry.value = !!saved.deleteEntry;
-        // Migrate old session drafts so an application update cannot discard them.
+        // Preserve older tab-session drafts in browser persistent storage.
         persist(editDraftKey.value, saved, true);
     }
     const draft = readDraft<typeof form.value>(draftKey.value);
@@ -310,20 +309,20 @@ async function changeComparison() {
     }
   } catch (e) { toast((e as Error).message, true); }
 }
-function beforeUpdate(event: Event) {
-  if (busy.value || nextBusy.value || loading.value) { event.preventDefault(); return; }
+function saveBeforeUnload() {
+  flushDrafts();
   if (!detail.value) return;
-  // 页面切换前必须同步落盘，不能用防抖队列。
+  // Save synchronously on tab close/reload, without requesting a leave prompt.
   const ok = writeNow(draftKey.value, form.value);
   const editOk = !editDirty.value || writeNow(editDraftKey.value, { content: editContent.value, source: editSource.value, baseRevision: editBaseRevision.value, deleteEntry: deleteEntry.value });
   const decisionOk = !admin.value || writeNow(decisionDraftKey.value, { reason: decisionReason.value, status: decisionStatus.value });
-  if (!ok || !editOk || !decisionOk) { draftWarning.value = true; event.preventDefault(); }
+  if (!ok || !editOk || !decisionOk) draftWarning.value = true;
 }
-onMounted(() => { load(); window.addEventListener('desktop-before-update', beforeUpdate); });
+onMounted(() => { load(); window.addEventListener('beforeunload', saveBeforeUnload); });
 onUnmounted(() => {
   flushDrafts();
   sequence++;
-  window.removeEventListener('desktop-before-update', beforeUpdate);
+  window.removeEventListener('beforeunload', saveBeforeUnload);
 });
 </script>
 <template>
@@ -782,3 +781,4 @@ onUnmounted(() => {
     </form></Modal
   >
 </template>
+

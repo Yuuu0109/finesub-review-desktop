@@ -8,7 +8,7 @@
  *   3. the Ed25519 signature of the archive's SHA-256 verifies against the
  *      public key in mygo.json — the key compiled into the app;
  *   4. a tampered archive does not verify;
- *   5. the portable executable is a Windows x64 PE that embeds the frontend;
+ *   5. the portable executable is a Windows x64 PE;
  *   6. SHA256SUMS lists the artifacts, with the right digests.
  *
  * Usage: node scripts/verify_desktop.mjs [folder]
@@ -21,7 +21,7 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const config = JSON.parse(await readFile(join(root, "desktop/mygo.json"), "utf8"));
-const folder = resolve(process.argv[2] || join(root, "desktop", "build", "windows-amd64"));
+const folder = resolve(process.argv.slice(2).find((arg) => !arg.startsWith("--")) || join(root, "desktop", "build", "windows-amd64"));
 
 const publicKey = config.updates?.publicKey;
 assert.ok(publicKey, "mygo.json has no updates.publicKey");
@@ -41,12 +41,10 @@ if (!allowPrevious) {
 
 // 2. The archive the manifest names.
 const archiveName = `finesub-review-${manifest.version}-windows-amd64.tar.gz`;
-assert.equal(
-  decodeURIComponent(manifest.url.split("/").pop()),
-  archiveName,
-  `Manifest points at ${manifest.url}, expected ${archiveName}`,
-);
+const expectedURL = `https://github.com/${config.updates.github}/releases/download/${config.updates.tagPrefix || "v"}${manifest.version}/${archiveName}`;
+assert.equal(manifest.url, expectedURL, "Manifest must use the configured repository and the same version tag");
 const archive = await readFile(join(folder, archiveName));
+assert.ok(Number.isSafeInteger(manifest.size) && manifest.size > 0, "Manifest size must be a positive integer");
 assert.equal(archive.length, manifest.size, `Archive is ${archive.length} bytes, manifest says ${manifest.size}`);
 
 // 3. The signature over its SHA-256, with the key compiled into the app.
@@ -77,26 +75,13 @@ assert.equal(exe.subarray(pe, pe + 4).toString(), "PE\0\0");
 assert.equal(exe.readUInt16LE(pe + 4), 0x8664, `${exeName} is not Windows x64`);
 assert.equal(exe.readUInt16LE(pe + 24), 0x20b, `${exeName} is not PE32+`);
 
-// The shell embeds its pages: it serves them itself through a mygo:// handler so
-// it can attach the CSP, and a portable copy must carry them inside the binary.
-//
-// The markers must be strings only the frontend brings. "FineSub" is NOT one of
-// them: it appears in main.go's appName const and in the window title, so it is
-// present even in a build with no pages at all — a check on it would never fail,
-// which is worse than no check. These two were verified against a build whose
-// ui/ held only .gitkeep:
-//   assets/  the directory Vite emits its output into
-//   index-   Vite's content-hashed entry name, e.g. assets/index-B8OPzfxW.js
-const frontendMarkers = ["assets/", "index-"];
-const missing = frontendMarkers.filter((marker) => !exe.includes(Buffer.from(marker, "utf8")));
-assert.equal(
-  missing.length,
-  0,
-  `${exeName} does not embed the frontend (missing ${missing.join(", ")}); run node scripts/embed_frontend.mjs before go build`,
-);
+// Native UI does not embed a Vite build. Do not check HTML/asset marker strings:
+// neither their absence nor presence proves a native window actually renders.
+// The Go build verifies the native code; Windows runtime acceptance is separate.
 
 // 6. SHA256SUMS covers the artifacts it lists, with the right digests.
-const sumsPath = join(folder, "..", "SHA256SUMS");
+let sumsPath = join(folder, "SHA256SUMS");
+try { await stat(sumsPath); } catch { sumsPath = join(folder, "..", "SHA256SUMS"); }
 const sums = (await readFile(sumsPath, "utf8")).trim().split(/\r?\n/);
 const listed = new Map();
 for (const line of sums) {
@@ -104,6 +89,9 @@ for (const line of sums) {
   assert.ok(match, `Invalid checksum line: ${line}`);
   assert.ok(!listed.has(match[2]), `Duplicate checksum entry: ${match[2]}`);
   listed.set(match[2], match[1]);
+}
+for (const name of [exeName, archiveName]) {
+  assert.ok([...listed.keys()].some((listedName) => listedName === name || listedName === `windows-amd64/${name}`), `SHA256SUMS must include ${name}`);
 }
 for (const [name, expected] of listed) {
   const candidates = [join(folder, name), join(folder, "..", name)];
@@ -126,6 +114,7 @@ for (const [name, expected] of listed) {
 const artifacts = (await readdir(folder)).sort();
 console.log(`verified ${manifest.version} from ${folder}`);
 console.log(`  archive   ${archiveName} (${(archive.length / 1048576).toFixed(1)} MiB, signature ok)`);
-console.log(`  portable  ${exeName} (${(exe.length / 1048576).toFixed(1)} MiB, Windows x64 PE, frontend embedded)`);
+console.log(`  portable  ${exeName} (${(exe.length / 1048576).toFixed(1)} MiB, Windows x64 PE)`);
 console.log(`  checksums ${listed.size} entries in SHA256SUMS`);
 console.log(`  files     ${artifacts.join(", ")}`);
+

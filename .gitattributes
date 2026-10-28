@@ -1,0 +1,4 @@
+# Go tools emit LF; keep Windows checkouts consistent with gofmt and go mod tidy.
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf

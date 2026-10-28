@@ -1,91 +1,163 @@
-name: Windows desktop build
+name: Windows native desktop build
+
 on:
   workflow_dispatch:
   push:
-    branches: [main, feat/desktop]
+    branches: [main, feat/desktop, codex/native-mygo]
+    tags: ["desktop-v*"]
     paths:
-      - "frontend/**"
+      - ".gitattributes"
       - "desktop/**"
-      - "scripts/embed_frontend.mjs"
       - "scripts/package_desktop.mjs"
       - "scripts/verify_desktop.mjs"
+      - "scripts/desktop_release.test.mjs"
+      - "CHANGELOG.md"
       - ".github/workflows/desktop.yml"
   pull_request:
     paths:
-      - "frontend/**"
+      - ".gitattributes"
       - "desktop/**"
-      - "scripts/embed_frontend.mjs"
       - "scripts/package_desktop.mjs"
       - "scripts/verify_desktop.mjs"
+      - "scripts/desktop_release.test.mjs"
+      - "CHANGELOG.md"
       - ".github/workflows/desktop.yml"
+
 permissions:
   contents: read
+
 env:
-  # MyGo 0.7.1 declares `go 1.27.3` in its go.mod; auto fetches that toolchain
-  # when the runner's Go is older.
   GOTOOLCHAIN: auto
+
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      SIGN_RELEASE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.21.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27.3"
           cache-dependency-path: desktop/go.sum
-      - name: Frontend install and tests
-        working-directory: frontend
+      - name: Check Go formatting and dependency lock
+        working-directory: desktop
+        shell: pwsh
         run: |
-          pnpm install --frozen-lockfile
-          pnpm test:desktop
-          pnpm build
-      # The shell serves its own pages through a mygo:// handler so it can attach
-      # the Content-Security-Policy, so the pages must be embedded in the binary.
-      # Without this step a clean checkout builds an executable that fails at
-      # launch with "找不到前端" as soon as it is copied away from the repository.
-      - name: Embed the frontend into the Go shell
-        run: node scripts/embed_frontend.mjs
+          $sources = @(Get-ChildItem -Recurse -Filter *.go | ForEach-Object { $_.FullName })
+          $unformatted = @(& gofmt -l $sources)
+          if ($LASTEXITCODE -ne 0) { throw "gofmt failed" }
+          if ($unformatted.Count -gt 0) { throw "Run gofmt on: $($unformatted -join ', ')" }
+          go mod tidy
+          if ($LASTEXITCODE -ne 0) { throw "go mod tidy failed" }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { throw "Commit the dependency lock changes from go mod tidy" }
       - name: Go tests
         working-directory: desktop
         run: go test -v ./...
-      # Only on a pull request. There it is what proves the whole chain a
-      # contributor gets — embed_frontend.mjs, then a plain go build with no
-      # update key — still compiles and produces a working layout. A push builds
-      # the signed release below with `mygo build`, which is the artifact every
-      # check runs against, so a second go build there would build a binary
-      # nothing looks at.
-      - name: Build the desktop executable (pull requests only)
-        if: github.event_name == 'pull_request'
+      # A clean checkout builds without Vite, Node, copied pages or WebView2.
+      # The smoke check below opens a real native window. Full interaction and
+      # upgrade acceptance remain separate checks recorded in VALIDATION.md.
+      - name: Build the native executable
         working-directory: desktop
-        run: go build -trimpath -o finesub-review-desktop.exe .
-      - name: Install the mygo CLI
-        if: github.event_name != 'pull_request'
+        run: go build -trimpath -ldflags "-H=windowsgui" -o "FineSub Review-dev.exe" .
+      - name: Verify executable version without opening a window
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $expected = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $actual = (& ".\FineSub Review-dev.exe" --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
+            throw "Executable version '$actual' does not match '$expected'"
+          }
+      - name: Open the native window without network or user data
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath ".\FineSub Review-dev.exe" -ArgumentList "--smoke-test" -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw "Native window did not draw its first frame within 30 seconds"
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Native window smoke test failed with exit code $($process.ExitCode)"
+          }
+      - name: Upload development executable
+        if: env.SIGN_RELEASE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: finesub-review-native-windows-dev
+          path: desktop/FineSub Review-dev.exe
+          if-no-files-found: error
+      - name: Install the MyGO CLI
+        if: env.SIGN_RELEASE == 'true'
         run: go install github.com/egoist/mygo/cmd/mygo@v0.7.1
-      # A release build stamps the update feed and public key into the binary and
-      # signs the archives. A pull request has no key, so it stops at go build.
       - name: Build the signed release
-        if: github.event_name != 'pull_request'
+        if: env.SIGN_RELEASE == 'true'
         working-directory: desktop
         env:
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
         run: mygo build
-      - name: Verify signature, checksums and the portable executable
-        if: github.event_name != 'pull_request'
-        run: node scripts/verify_desktop.mjs
-      - name: Stage the release artifacts
-        if: github.event_name != 'pull_request'
-        run: node scripts/package_desktop.mjs
-      - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request'
+      - name: Verify the signed release executable starts
+        if: env.SIGN_RELEASE == 'true'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $expected = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $exe = Resolve-Path ".\build\windows-amd64\FineSub Review.exe"
+          $actual = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
+            throw "Release executable version '$actual' does not match '$expected'"
+          }
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw "Release executable did not draw its first native frame"
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Release native smoke test failed with exit code $($process.ExitCode)"
+          }
+      - name: Verify the update archive contains the distributed executable
+        if: env.SIGN_RELEASE == 'true'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $version = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $folder = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+          New-Item -ItemType Directory -Path $folder | Out-Null
+          try {
+            tar -xzf "build/windows-amd64/finesub-review-$version-windows-amd64.tar.gz" -C $folder
+            if ($LASTEXITCODE -ne 0) { throw "Cannot extract the update archive" }
+            $archived = @(Get-ChildItem -Path $folder -Recurse -File -Filter "FineSub Review.exe")
+            if ($archived.Count -ne 1) { throw "Update archive must contain exactly one application executable" }
+            $portableHash = (Get-FileHash "build/windows-amd64/FineSub Review.exe" -Algorithm SHA256).Hash
+            $archiveHash = (Get-FileHash $archived[0].FullName -Algorithm SHA256).Hash
+            if ($portableHash -ne $archiveHash) { throw "Update archive differs from the distributed executable" }
+          } finally {
+            Remove-Item -LiteralPath $folder -Recurse -Force
+          }
+      # Node is only used for these release validation/staging utilities.
+      # The desktop app and its Go build have no JavaScript runtime dependency.
+      - uses: actions/setup-node@v4
         with:
-          name: finesub-review-windows
+          node-version: 22
+      - name: Test release verification and staging
+        run: node scripts/desktop_release.test.mjs
+      - name: Stage the release artifacts
+        if: env.SIGN_RELEASE == 'true'
+        run: node scripts/package_desktop.mjs
+      - name: Verify signature, checksums and native executable
+        if: env.SIGN_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $version = (Get-Content desktop/mygo.json -Raw | ConvertFrom-Json).version
+          node scripts/verify_desktop.mjs "output/desktop-$version"
+      - name: Upload release artifacts
+        if: env.SIGN_RELEASE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: finesub-review-native-windows
           path: output/desktop-*/
           if-no-files-found: error
+      # Publishing a Release is a separate action after real-machine acceptance.
+

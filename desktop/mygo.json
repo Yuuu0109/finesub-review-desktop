@@ -2,13 +2,12 @@
   "name": "FineSub Review",
   "slug": "finesub-review",
   "identifier": "com.finesub.review",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "main": ".",
-  "frontendDist": "../frontend/dist",
-  "buildCommand": "pnpm --dir ../frontend build",
   "out": "build",
   "icon": "../frontend/src/assets/icons/mika-source.png",
   "resources": [],
+  "linux": { "webview": false },
   "updates": {
     "publicKey": "1lrzm1qHE6saKJscB2Yu/tfDLzs2qU9KGXTMshqvoGw=",
     "github": "Yuuu0109/finesub-review-desktop",
@@ -16,3 +15,4 @@
     "changelog": "../CHANGELOG.md"
   }
 }
+
