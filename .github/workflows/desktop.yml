@@ -3,7 +3,7 @@ name: Windows native desktop build
 on:
   workflow_dispatch:
   push:
-    branches: [main, feat/desktop, codex/native-mygo]
+    branches: [main, feat/desktop, codex/native-mygo, codex/package-native-0.5.0]
     tags: ["desktop-v*"]
     paths:
       - ".gitattributes"
@@ -33,7 +33,7 @@ jobs:
   windows:
     runs-on: windows-latest
     env:
-      SIGN_RELEASE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch') }}
+      SIGN_RELEASE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/package-native-0.5.0' || startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -98,6 +98,25 @@ jobs:
         env:
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
         run: mygo build
+      - name: Verify the signed release executable starts
+        if: env.SIGN_RELEASE == 'true'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $expected = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $exe = Resolve-Path ".\build\windows-amd64\FineSub Review.exe"
+          $actual = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
+            throw "Release executable version '$actual' does not match '$expected'"
+          }
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw "Release executable did not draw its first native frame"
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Release native smoke test failed with exit code $($process.ExitCode)"
+          }
       # Node is only used for these release validation/staging utilities.
       # The desktop app and its Go build have no JavaScript runtime dependency.
       - uses: actions/setup-node@v4
