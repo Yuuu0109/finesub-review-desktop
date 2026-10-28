@@ -63,6 +63,18 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
             throw "Executable version '$actual' does not match '$expected'"
           }
+      - name: Open the native window without network or user data
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath ".\FineSub Review-dev.exe" -ArgumentList "--smoke-test" -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw "Native window did not draw its first frame within 30 seconds"
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Native window smoke test failed with exit code $($process.ExitCode)"
+          }
       - name: Upload development executable
         if: env.SIGN_RELEASE != 'true'
         uses: actions/upload-artifact@v4

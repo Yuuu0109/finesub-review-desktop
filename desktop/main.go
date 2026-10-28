@@ -66,18 +66,21 @@ type application struct {
 
 func main(){
  m,err:=readMetadata();if err!=nil{log.Fatal(err)}
- showVersion:=flagpkg.Bool("version",false,"print version without starting the UI");flagpkg.Parse()
+ showVersion:=flagpkg.Bool("version",false,"print version without starting the UI")
+ smokeTest:=flagpkg.Bool("smoke-test",false,"draw the native window once without network or user data")
+ flagpkg.Parse()
  if *showVersion{fmt.Println(m.Version);return}
- mygo.App.SetName(m.Name)
+ name:=m.Name;if *smokeTest{name+=" Smoke"};mygo.App.SetName(name)
  if mygo.App.Version()==""{mygo.App.SetVersion(m.Version)}
- if !mygo.App.RequestSingleInstanceLock(){return}
+ if !*smokeTest&&!mygo.App.RequestSingleInstanceLock(){return}
  dir,err:=mygo.App.Path(mygo.PathUserData);if err!=nil{log.Fatal(err)}
+ if *smokeTest{dir,err=os.MkdirTemp("","finesub-native-smoke-");if err!=nil{log.Fatal(err)};defer os.RemoveAll(dir)}
  store,err:=localstore.Open(filepath.Join(dir,"native"));if err!=nil{log.Fatal(err)}
  ctx,cancel:=context.WithCancel(context.Background());defer cancel()
  a:=&application{meta:m,store:store,secrets:systemSecrets{m.Identifier},ctx:ctx,cancel:cancel,server:defaultServer,page:"dashboard",initialized:true}
  var saved struct{Server string}
  if err:=store.Get("preferences",&saved);err==nil&&saved.Server!=""{a.server=saved.Server}else if err!=nil&&!errors.Is(err,os.ErrNotExist){a.error=err.Error()}
- mygo.Use(native.New(updater.Options{Language:"zh-Hans"}))
+ mygo.Use(native.New(updater.Options{Language:"zh-Hans",DisableAutomaticChecks:*smokeTest}))
  mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
   {Label:"FineSub",Submenu:[]*mygo.MenuItem{
    {Label:"刷新",Accelerator:"CmdOrCtrl+R",Click:func(_ *mygo.MenuItem,_ *mygo.Window){a.refreshPage()}},
@@ -87,13 +90,20 @@ func main(){
  }))
  mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent){if !a.canExit(){e.PreventDefault()}})
  mygo.App.OnSecondInstance(func(_ []string,_ string){if a.window!=nil{a.window.Restore();a.window.Focus()}})
+ smokeReady:=false
  mygo.App.WhenReady(func(){
   a.window=mygo.NewWindow(mygo.WindowOptions{Title:"FineSub 知识库审核",Width:1280,Height:860,MinWidth:900,MinHeight:640,StateKey:"main",Content:ui.View(a.view)})
   a.window.OnClose(func(e *mygo.CloseEvent){if !a.canExit(){e.PreventDefault()}})
   a.window.OnClosed(func(){cancel()})
+  if *smokeTest{
+   a.window.OnReadyToShow(func(){smokeReady=true;mygo.App.Quit()})
+   return
+  }
   a.connect();go a.tick()
  })
+ if *smokeTest{deadline:=time.AfterFunc(20*time.Second,func(){mygo.App.Exit(2)});defer deadline.Stop()}
  if err:=mygo.App.Run();err!=nil{log.Print(err)}
+ if *smokeTest&&!smokeReady{os.Exit(2)}
  if a.client!=nil{if err:=a.client.Close();err!=nil{log.Print("保存会话失败: ",err)}}
 }
 
