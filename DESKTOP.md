@@ -28,7 +28,7 @@ go build -trimpath -ldflags "-H=windowsgui" -o "FineSub Review-dev.exe" .
 & ".\FineSub Review-dev.exe"
 ```
 
-无需执行 `pnpm build` 或 `scripts/embed_frontend.mjs`。程序使用 Go 原生界面，不查找 EXE 附近或当前目录的 `dist`。单独复制 EXE 到其他目录即可运行。开发构建没有 MyGO CLI 写入的更新源和公钥，不能作为应用内更新测试的旧版本。
+无需执行 `pnpm build`；旧前端嵌入脚本已经移除。程序使用 Go 原生界面，不查找 EXE 附近或当前目录的 `dist`。单独复制 EXE 到其他目录即可运行。开发构建没有 MyGO CLI 写入的更新源和公钥，不能作为应用内更新测试的旧版本。
 
 签名发布：
 

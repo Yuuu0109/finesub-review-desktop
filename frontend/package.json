@@ -7,13 +7,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:desktop": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
-    "@mygo-plugins/fetch": "0.7.1",
     "dompurify": "^3.2.0",
     "markdown-it": "^14.1.0",
-    "mygo-runtime": "0.7.1",
     "vue": "^3.5.0"
   },
   "devDependencies": {
@@ -26,3 +24,4 @@
     "vue-tsc": "^3.0.0"
   }
 }
+

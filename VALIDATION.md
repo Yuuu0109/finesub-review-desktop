@@ -8,6 +8,7 @@
 |---|---|
 | 本地 Go 编译和单元测试 | 当前工作环境没有所需 Go 工具链，待 Windows CI |
 | 发布工具回归测试 | 本地 `node scripts/desktop_release.test.mjs` 6 项通过：签名、篡改、来源、校验和和整理目录检查；使用合成产物，不是原生应用运行测试 |
+| 独立网页单元测试 | 本地 6 项通过：同源 API 路径、Cookie/CSRF/multipart、请求取消和审核队列/草稿工具；网页生产构建另由 CI 验证 |
 | Windows 原生 EXE 构建 | 待本分支 CI |
 | `--version` 与 `mygo.json` 一致 | 已加入 CI，待执行 |
 | MyGO 签名发布包及附件校验 | 待签名构建 |

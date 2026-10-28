@@ -59,8 +59,8 @@ func (a *application) loadReleases() {
 	api,admin:=a.client,a.admin()
 	a.run("正在读取发布版本",func(ctx context.Context)(func(),error){
 		var rows,candidates []object
-		if err:=api.Get(ctx,"/releases",&rows); err!=nil { return func(){a.releases.loadError=err.Error()},err }
-		if admin { if err:=api.Get(ctx,"/releases/candidates",&candidates); err!=nil { return func(){a.releases.loadError=err.Error()},err } }
+		if err:=api.Get(ctx,"/releases",&rows); err!=nil { return func(){a.releases.loadError=err.Error();a.error=err.Error();a.status=""},nil }
+		if admin { if err:=api.Get(ctx,"/releases/candidates",&candidates); err!=nil { return func(){a.releases.loadError=err.Error();a.error=err.Error();a.status=""},nil } }
 		return func(){
 			s:=&a.releases
 			s.rows=rows; s.candidates=candidates; s.loaded=true; s.loadError=""

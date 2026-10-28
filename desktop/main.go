@@ -138,6 +138,7 @@ func(a *application)refreshPage(){
  case "releases":a.loadReleases()
  case "settings","account":a.loadSettings()
  case "notices":a.loadNotices()
+ case "review":a.reloadReview("")
  }
 }
 func(a *application)connect(){
@@ -182,14 +183,15 @@ func(a *application)signIn(){
 func(a *application)afterAuthentication(){a.restoreTransferDrafts();a.refreshIdentity()}
 func(a *application)refreshIdentity(){
  api:=a.client;if api==nil{return}
+ if err:=a.saveDrafts();err!=nil{a.error=err.Error();return}
  a.run("加载账号",func(ctx context.Context)(func(),error){
   var me,settings object;var people,notices []object
-  if err:=api.Get(ctx,"/auth/me",&me);err!=nil{return nil,err}
   if err:=api.Get(ctx,"/settings",&settings);err!=nil{return nil,err}
   if err:=api.Get(ctx,"/users",&people);err!=nil{return nil,err}
   if err:=api.Get(ctx,"/notices",&notices);err!=nil{return nil,err}
+  if err:=api.Get(ctx,"/auth/me",&me);err!=nil{return nil,err}
   return func(){
-   if str(a.user,"id")!=str(obj(me,"user"),"id"){_ = a.saveDrafts();a.resetIdentityViews()}
+   if str(a.user,"id")!=str(obj(me,"user"),"id"){a.resetIdentityViews()}
    a.user,a.people,a.settings,a.notices=obj(me,"user"),people,settings,notices
    a.lastNoticePoll=time.Now();a.restoreTransferDrafts()
    if a.page=="review"{a.page="entries"};a.refreshPage()
@@ -229,7 +231,7 @@ func(a *application)tick(){
  case <-a.ctx.Done():return
  case <-ticker.C:a.window.Update(func(){
   if a.user==nil||a.busy{return}
-  if err:=a.saveDrafts();err!=nil{a.error=err.Error()}
+  if err:=a.saveDrafts();err!=nil{a.error=err.Error();return}
   a.pollTransfers()
   if !a.busy&&time.Since(a.lastNoticePoll)>=30*time.Second{a.loadNotices()}
  })
@@ -265,14 +267,14 @@ func(a *application)view(c *ui.Context){
    if a.connected{if ui.Button(c,"更换服务器").Disabled(a.busy).Clicked(){a.changeServer()}}
   })
   if a.error!=""{ui.Row(c.Key("error")).Padding(10,20).Gap(8).Children(func(){
-   ui.Text(c,a.error).Color(c.Theme().Danger).Grow(1)
+   ui.Text(c,a.error).TextColor(c.Theme().Danger).Grow(1)
    if a.connected&&a.user!=nil{if ui.Button(c,"重新验证登录").Disabled(a.busy).Clicked(){a.revalidate()}}
    if ui.Button(c,"关闭提示").Clicked(){a.error=""}
   })}
   if !a.connected{a.connectionView(c)}else if a.user==nil{a.entryView(c)}else if a.adminLogin{a.adminView(c)}else{
    ui.Row(c.Key("workspace")).Grow(1).FillWidth().Children(func(){
     a.sidebar(c)
-    ui.Column(c.Key("page-"+a.page)).Grow(1).FillHeight().Children(func(){switch a.page{
+    ui.Column(c.Key("page-"+a.page)).Grow(1).FillHeight().Disabled(a.busy).Children(func(){switch a.page{
      case "entries","mine":a.entriesView(c)
      case "review":a.reviewView(c)
      case "streamer":a.streamerView(c)

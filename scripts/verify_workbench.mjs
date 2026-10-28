@@ -1,4 +1,5 @@
-// Run against a newly created, loopback-only database; never accepts a service URL.
+// Web-client acceptance against a newly created, loopback-only database.
+// This does not exercise the Go desktop app and never accepts a service URL.
 import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -43,7 +44,7 @@ try {
   page.on('response', r => { if (r.url().includes('/api/')) responses.push([r.status(), r.url()]); });
   await page.goto(base);
   await page.getByLabel('访问口令', { exact: true }).waitFor();
-  await capture('login-desktop.png');
+  await capture('login-wide.png');
   await page.getByLabel('访问口令', { exact: true }).fill(passphrase);
   await page.getByRole('button', { name: '进入知识库', exact: true }).click();
   await page.getByRole('button', { name: '管理员登录', exact: true }).click();
@@ -71,24 +72,37 @@ try {
   const firstUrl = page.url();
   const firstTitle = await page.locator('.review-heading h1').textContent();
   await page.getByRole('button', { name: '修订', exact: true }).click();
-  await capture('revision-desktop.png');
+  await capture('revision-wide.png');
   await page.getByLabel('Markdown 正文').fill(document(firstTitle.trim()) + '\n- 草稿来源补充。\n');
   await page.getByRole('button', { name: '版本差异', exact: true }).click();
   await page.getByLabel('对比版本', { exact: true }).selectOption('published');
   await page.getByRole('button', { name: '修订', exact: true }).click();
   assert.match(await page.getByLabel('Markdown 正文').inputValue(), /草稿来源补充/);
-  assert.equal(await page.evaluate(() => window.dispatchEvent(new Event('desktop-before-update', { cancelable: true }))), true);
-  assert.equal(await page.evaluate(() => {
+  assert.equal(await page.evaluate(() => window.dispatchEvent(new Event('beforeunload', { cancelable: true }))), true);
+  const blockedStorage = await page.evaluate(() => {
     const setItem = Storage.prototype.setItem;
     try {
       Storage.prototype.setItem = () => { throw new DOMException('Test quota', 'QuotaExceededError'); };
-      return window.dispatchEvent(new Event('desktop-before-update', { cancelable: true }));
+      // Change the draft after its last successful write so the write cache
+      // cannot accidentally bypass the simulated quota failure.
+      const input = document.querySelector('textarea.code-editor');
+      input.value += '\n- 关闭前的最新草稿。\n';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const allowed = window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
+      const saved = Object.keys(localStorage).filter(key => key.startsWith('finesub-edit:')).map(key => localStorage.getItem(key));
+      return { allowed, saved };
     } finally { Storage.prototype.setItem = setItem; }
-  }), false);
+  });
+  assert.equal(blockedStorage.allowed, true, 'tab close must not request a leave prompt');
+  assert.ok(blockedStorage.saved.every(value => !value.includes('关闭前的最新草稿')));
+  await page.getByText('草稿保存失败，请复制未保存内容。', { exact: true }).waitFor();
+  // A later save retries the failed write after storage becomes available.
+  assert.equal(await page.evaluate(() => window.dispatchEvent(new Event('beforeunload', { cancelable: true }))), true);
   await page.evaluate(() => sessionStorage.clear());
   await page.reload();
   await page.getByRole('button', { name: '修订', exact: true }).click();
   assert.match(await page.getByLabel('Markdown 正文').inputValue(), /草稿来源补充/);
+  assert.match(await page.getByLabel('Markdown 正文').inputValue(), /关闭前的最新草稿/);
   assert.equal(await page.getByRole('button', { name: '作出决定', exact: true }).isDisabled(), true);
   // Simulate another administrator revising while this editor holds an older draft.
   const me = await (await context.request.get(base + '/api/auth/me')).json();
@@ -106,7 +120,7 @@ try {
   page.once('dialog', d => d.accept());
   await page.getByRole('button', { name: '丢弃草稿', exact: true }).click();
   await page.getByRole('button', { name: '版本差异', exact: true }).click();
-  await capture('review-desktop.png');
+  await capture('review-wide.png');
   checks.push('持久草稿、对比不覆盖编辑、409 冲突保护、旧基线提示');
   await page.getByRole('button', { name: '作出决定', exact: true }).click();
   await page.getByLabel('决定理由').fill('已核对节目原句与对应时间码。');
@@ -125,7 +139,7 @@ try {
   assert.match(page.url(), /batch_id=/);
   assert.equal(await page.getByLabel('分类筛选').inputValue(), 'common');
   await Promise.all([page.waitForResponse(r => r.url().includes('reviewed=no') && r.status() === 200), page.getByRole('button', { name: '我未审核', exact: true }).click()]);
-  await page.screenshot({ path: join(evidence, 'queue-desktop.png'), fullPage: true });
+  await page.screenshot({ path: join(evidence, 'queue-wide.png'), fullPage: true });
   await page.getByRole('button', { name: /发布已通过知识/ }).click();
   await page.getByLabel(/选择全部可发布变更/).check();
   await page.getByRole('button', { name: /创建发布 ·/ }).click();
@@ -141,7 +155,7 @@ try {
   await page.getByRole('heading', { name: '工作台', exact: true }).waitFor();
   await page.locator('.workflow-overview').waitFor();
   await page.locator('.toast').waitFor({ state: 'hidden' });
-  await capture('dashboard-desktop.png');
+  await capture('dashboard-wide.png');
   for (const width of [900, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(firstUrl);
@@ -209,3 +223,4 @@ try {
     else child.kill('SIGTERM');
   }
 }
+

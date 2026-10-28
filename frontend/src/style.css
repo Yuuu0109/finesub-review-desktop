@@ -2581,71 +2581,6 @@ summary:focus-visible {
   font-size: 11px;
   color: var(--ink-3);
 }
-.desktop-connected {
-  --app-top: 36px;
-}
-.desktop-bar {
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  /* 品牌已在侧栏和窗口标题出现，这里只放操作项，靠右对齐。 */
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--line-1);
-  background: var(--surface-2);
-  font-size: 11px;
-}
-.desktop-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-width: 0;
-}
-.desktop-bar button {
-  font-size: 11px;
-  border: 0;
-  background: none;
-  padding: 8px 0;
-  color: var(--ink-3);
-}
-.desktop-bar button:hover {
-  color: var(--brand-600);
-}
-.server-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--green-600);
-  white-space: nowrap;
-}
-.server-status > span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--green-600);
-}
-.server-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  white-space: nowrap;
-}
-.server-switch > span {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.desktop-connected .app-shell,
-.desktop-connected .entry-screen,
-.desktop-connected .boot {
-  min-height: calc(100dvh - 36px);
-}
-
 /* ---------------------------------------------------------- 响应式 */
 
 @media (min-width: 1650px) {
@@ -3512,17 +3447,6 @@ summary:focus-visible {
   .entry-form form {
     margin-top: 24px;
   }
-  .desktop-bar {
-    gap: 8px;
-    padding: 0 12px;
-  }
-  .desktop-bar-actions {
-    gap: 12px;
-  }
-  .server-switch > span,
-  .server-status {
-    display: none;
-  }
 }
 @media (max-height: 740px) and (min-width: 761px) {
   .entry-screen {
@@ -3553,3 +3477,4 @@ summary:focus-visible {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
+

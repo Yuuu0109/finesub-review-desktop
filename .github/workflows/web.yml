@@ -1,0 +1,45 @@
+name: Review web client
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feat/desktop, codex/native-mygo]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked web dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Test browser transport and workflow helpers
+        working-directory: frontend
+        run: pnpm test
+      - name: Type-check and build the web client
+        working-directory: frontend
+        run: pnpm build
+      - name: Upload the web assets for the review service
+        uses: actions/upload-artifact@v4
+        with:
+          name: finesub-review-web
+          path: frontend/dist/
+          if-no-files-found: error

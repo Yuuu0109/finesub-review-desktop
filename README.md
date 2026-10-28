@@ -47,7 +47,7 @@ mygo build
 |---|---|
 | `desktop/` | Go 原生界面、客户端服务、设置/草稿存储和原生更新 |
 | `backend/` | 配套审核 API、worker、权限和服务器数据 |
-| `frontend/` | 配套服务的网页界面，独立于桌面构建 |
+| `frontend/` | 配套服务的网页界面，仅使用浏览器请求，不含桌面 IPC 或更新窗口 |
 | `scripts/` | 发布校验、服务端维护和 FineSub 格式兼容工具 |
 | `.github/workflows/desktop.yml` | Windows Go 测试、原生构建及签名产物检查 |
 

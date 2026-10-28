@@ -8,18 +8,12 @@ importers:
 
   .:
     dependencies:
-      '@mygo-plugins/fetch':
-        specifier: 0.7.1
-        version: 0.7.1(mygo-runtime@0.7.1)
       dompurify:
         specifier: ^3.2.0
         version: 3.4.15
       markdown-it:
         specifier: ^14.1.0
         version: 14.3.2
-      mygo-runtime:
-        specifier: 0.7.1
-        version: 0.7.1
       vue:
         specifier: ^3.5.0
         version: 3.5.42(typescript@5.8.2)
@@ -223,11 +217,6 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
-
-  '@mygo-plugins/fetch@0.7.1':
-    resolution: {integrity: sha512-WTBvSBywPSSG6gYDlUJuRB4IMh6yfpfLjyTxDAdmVyiwGDP/wLPnqLyN9efytbd6JlR9FZJSGoTg6A0G4jKZTA==}
-    peerDependencies:
-      mygo-runtime: ^0.7.1
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -504,9 +493,6 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  mygo-runtime@0.7.1:
-    resolution: {integrity: sha512-Eg2jC6ayPE1ik3cAMtOiK85ieNNgsJXSHOFQEyPXEb237O4AYmfcoQgY6SyVQhuHSd1ql0VZxAuGboUwJ0UySw==}
-
   nanoid@3.3.19:
     resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -710,10 +696,6 @@ snapshots:
     optional: true
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
-
-  '@mygo-plugins/fetch@0.7.1(mygo-runtime@0.7.1)':
-    dependencies:
-      mygo-runtime: 0.7.1
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
@@ -970,8 +952,6 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  mygo-runtime@0.7.1: {}
-
   nanoid@3.3.19: {}
 
   path-browserify@1.0.1: {}
@@ -1064,3 +1044,4 @@ snapshots:
       '@vue/shared': 3.5.42
     optionalDependencies:
       typescript: 5.8.2
+
