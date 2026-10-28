@@ -187,7 +187,7 @@ func (a *application) discardPreferenceEdits() {
 func (a *application) accountSettingsView(c *ui.Context) {
 	p := &a.preferences
 	ui.Text(c, str(a.user, "name")).FontSize(20).Bold()
-	ui.Text(c, str(a.user, "username") + " · " + nativeLabel(str(a.user, "role")))
+	ui.Text(c, str(a.user, "username")+" · "+nativeLabel(str(a.user, "role")))
 	if flag(a.user, "passcode_member") {
 		ui.Text(c, "审核署名")
 		ui.TextInput(c, &p.memberName).Label("审核署名").Placeholder("昵称，最多 80 个字符").Disabled(a.busy)
@@ -418,7 +418,7 @@ func (a *application) changeMember(person object, active bool, role string) {
 		answer, err := mygo.Dialog.Message(mygo.MessageOptions{
 			Parent: a.window, Type: mygo.MessageWarning, Title: "调整账号",
 			Message: fmt.Sprintf("将「%s」设为%s，角色为%s？", name, state, nativeLabel(role)),
-			Detail: "修改后该账号的管理员登录会话会失效。", Buttons: []string{"取消", "确认"},
+			Detail:  "修改后该账号的管理员登录会话会失效。", Buttons: []string{"取消", "确认"},
 			DefaultButton: 0, CancelButton: 0,
 		})
 		if err != nil {

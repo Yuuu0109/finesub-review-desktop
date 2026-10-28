@@ -19,23 +19,23 @@ import (
 type catalogState struct {
 	Query, Status, Category, Reviewed string
 	BatchID, GroupID                  string
-	Page, Total                      int
-	Rows                             []object
-	Dashboard                        object
-	Queue                            []object
-	QueueTotal                       int
-	QueueQuery                       string
+	Page, Total                       int
+	Rows                              []object
+	Dashboard                         object
+	Queue                             []object
+	QueueTotal                        int
+	QueueQuery                        string
 
-	StreamQuery                 string
-	StreamPage, StreamTotal      int
-	Streamers                   []object
-	StreamerID                  string
-	Profile                     object
-	ProfileRaw                  bool
-	Knowledge                   []object
-	KnowledgeTotal              int
-	KnowledgeKind               string
-	Markdown                    markdown.Options
+	StreamQuery             string
+	StreamPage, StreamTotal int
+	Streamers               []object
+	StreamerID              string
+	Profile                 object
+	ProfileRaw              bool
+	Knowledge               []object
+	KnowledgeTotal          int
+	KnowledgeKind           string
+	Markdown                markdown.Options
 }
 
 type catalogOption struct{ Value, Label string }

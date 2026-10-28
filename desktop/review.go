@@ -27,7 +27,7 @@ type reviewDraft struct {
 	DecisionReason string `json:"decisionReason"`
 	ReplyTarget    string `json:"replyTarget"`
 	ReplyRevision  string `json:"replyRevision"`
-	ReplyBody       string `json:"replyBody"`
+	ReplyBody      string `json:"replyBody"`
 	ResolveTarget  string `json:"resolveTarget"`
 	Resolution     string `json:"resolution"`
 	ResolutionNote string `json:"resolutionNote"`
@@ -210,7 +210,9 @@ func (a *application) loadReviewRevision(id, query, revision, comparison string,
 			return nil, err
 		}
 		return func() {
-			if fresh { a.review.entryID = "" }
+			if fresh {
+				a.review.entryID = ""
+			}
 			a.installReview(id, query, comparison, detail, diff)
 			a.page = "review"
 		}, nil
@@ -228,7 +230,7 @@ func (a *application) installReview(id, query, comparison string, detail object,
 		compare: comparison, tab: "read", raw: str(entry, "content"), diff: diff,
 		continueNext: true, editable: a.admin(),
 		draft: reviewDraft{Verdict: "changes", DecisionStatus: "approved", Resolution: "accepted"},
-		edit: reviewEditDraft{Content: str(entry, "content"), Source: str(entry, "source"), BaseRevision: str(entry, "id"), Delete: str(entry, "operation") == "delete"},
+		edit:  reviewEditDraft{Content: str(entry, "content"), Source: str(entry, "source"), BaseRevision: str(entry, "id"), Delete: str(entry, "operation") == "delete"},
 	}
 	if num(entry, "number") > 1 {
 		s.tab = "diff"
@@ -367,7 +369,9 @@ func (a *application) reviewView(c *ui.Context) {
 			ui.Text(c, "草稿未能保存："+s.draftError)
 			if ui.Button(c, "重试保存草稿").Disabled(a.busy).Clicked() {
 				s.dirty = true
-				if err := a.saveReviewDrafts(); err != nil { a.error = err.Error() }
+				if err := a.saveReviewDrafts(); err != nil {
+					a.error = err.Error()
+				}
 			}
 		}
 		ui.Scroll(c).Grow(1).Gap(14).Children(func() {
@@ -383,8 +387,12 @@ func (a *application) reviewView(c *ui.Context) {
 			}
 			ui.Row(c).Gap(8).Children(func() {
 				for _, tab := range []reviewOption{{"read", "正文"}, {"raw", "原文"}, {"diff", "版本差异"}, {"edit", "修订"}} {
-					if tab.value == "edit" && (!a.admin() || !s.current()) { continue }
-					if ui.Button(c, tab.label).Disabled(a.busy).Clicked() { s.tab = tab.value }
+					if tab.value == "edit" && (!a.admin() || !s.current()) {
+						continue
+					}
+					if ui.Button(c, tab.label).Disabled(a.busy).Clicked() {
+						s.tab = tab.value
+					}
 				}
 			})
 			switch s.tab {
@@ -395,12 +403,16 @@ func (a *application) reviewView(c *ui.Context) {
 				}
 				base := obj(s.detail, "comparison")
 				ui.Text(c, fmt.Sprintf("基线 v%d → 当前展示 v%d", num(base, "number"), num(entry, "number")))
-				if s.diff != nil { editor.DiffView(c, s.diff).Height(440).FillWidth() }
+				if s.diff != nil {
+					editor.DiffView(c, s.diff).Height(440).FillWidth()
+				}
 			case "raw":
 				input := ui.TextArea(c, &s.raw).Label("Markdown 原文").ReadOnly(true).Height(420).FillWidth()
 				start, end := input.TextSelection()
 				runes := []rune(s.raw)
-				if start >= 0 && end > start && end <= len(runes) { s.rawSelection = string(runes[start:end]) }
+				if start >= 0 && end > start && end <= len(runes) {
+					s.rawSelection = string(runes[start:end])
+				}
 				if ui.Button(c, "引用所选原文").Disabled(a.busy || s.rawSelection == "").Clicked() {
 					s.draft.Quote = s.rawSelection
 					a.scheduleReviewSave()
@@ -419,7 +431,9 @@ func (a *application) reviewView(c *ui.Context) {
 					}
 				}
 			}
-			if s.editDirty() && s.tab != "edit" { ui.Text(c, "有未提交的正文修订草稿；请在修订页保存或丢弃后再裁决。") }
+			if s.editDirty() && s.tab != "edit" {
+				ui.Text(c, "有未提交的正文修订草稿；请在修订页保存或丢弃后再裁决。")
+			}
 			a.reviewDecisionView(c)
 			a.reviewRecordsView(c)
 			a.reviewFormView(c)
@@ -434,24 +448,42 @@ func (a *application) reviewMetadata(c *ui.Context) {
 		ui.Text(c, "路径："+str(entry, "path"))
 		ui.Text(c, "别名："+str(entry, "aliases"))
 		ui.Text(c, "来源："+str(entry, "source"))
-		if str(entry, "operation") == "delete" { ui.Text(c, "此版本为删除提案，通过并发布后才会删除正式词条。") }
-		if flag(entry, "published") { ui.Text(c, "当前展示版本已经正式发布。") }
+		if str(entry, "operation") == "delete" {
+			ui.Text(c, "此版本为删除提案，通过并发布后才会删除正式词条。")
+		}
+		if flag(entry, "published") {
+			ui.Text(c, "当前展示版本已经正式发布。")
+		}
 		assignee := str(entry, "assignee_id")
 		options := []reviewOption{{"", "未分配"}}
 		for _, person := range a.people {
-			if flag(person, "active") { options = append(options, reviewOption{str(person, "id"), str(person, "name")+" ("+str(person, "username")+")"}) }
+			if flag(person, "active") {
+				options = append(options, reviewOption{str(person, "id"), str(person, "name") + " (" + str(person, "username") + ")"})
+			}
 		}
 		if a.admin() {
-			if reviewSelect(c, "负责人", &assignee, options, a.busy) { a.assignReview(assignee) }
+			if reviewSelect(c, "负责人", &assignee, options, a.busy) {
+				a.assignReview(assignee)
+			}
 		} else {
 			name := "未分配"
-			for _, person := range a.people { if str(person, "id") == assignee { name = str(person, "name") } }
+			for _, person := range a.people {
+				if str(person, "id") == assignee {
+					name = str(person, "name")
+				}
+			}
 			ui.Text(c, "负责人："+name)
 			if assignee == "" || assignee == str(a.user, "id") {
 				label := "认领此词条"
-				if assignee != "" { label = "取消认领" }
+				if assignee != "" {
+					label = "取消认领"
+				}
 				if ui.Button(c, label).Disabled(a.busy).Clicked() {
-					if assignee == "" { a.assignReview(str(a.user, "id")) } else { a.assignReview("") }
+					if assignee == "" {
+						a.assignReview(str(a.user, "id"))
+					} else {
+						a.assignReview("")
+					}
 				}
 			}
 		}
@@ -480,12 +512,22 @@ func (a *application) reviewEditor(c *ui.Context) {
 			a.scheduleReviewSave()
 		}
 	}
-	if ui.TextArea(c, &s.edit.Content).Label("Markdown 正文").Height(440).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-	if ui.TextArea(c, &s.edit.Source).Label("来源说明").Height(80).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-	if ui.Checkbox(c, &s.edit.Delete, "删除提案：通过并发布后删除此词条").Disabled(a.busy).Changed() { a.scheduleReviewSave() }
+	if ui.TextArea(c, &s.edit.Content).Label("Markdown 正文").Height(440).FillWidth().Disabled(a.busy).Changed() {
+		a.scheduleReviewSave()
+	}
+	if ui.TextArea(c, &s.edit.Source).Label("来源说明").Height(80).FillWidth().Disabled(a.busy).Changed() {
+		a.scheduleReviewSave()
+	}
+	if ui.Checkbox(c, &s.edit.Delete, "删除提案：通过并发布后删除此词条").Disabled(a.busy).Changed() {
+		a.scheduleReviewSave()
+	}
 	ui.Row(c).Gap(8).Children(func() {
-		if ui.PrimaryButton(c, "保存为新版本").Disabled(a.busy || stale || !s.editDirty()).Clicked() { a.submitRevision() }
-		if ui.Button(c, "丢弃正文草稿").Disabled(a.busy || !s.editDirty()).Clicked() { a.discardReviewEdit() }
+		if ui.PrimaryButton(c, "保存为新版本").Disabled(a.busy || stale || !s.editDirty()).Clicked() {
+			a.submitRevision()
+		}
+		if ui.Button(c, "丢弃正文草稿").Disabled(a.busy || !s.editDirty()).Clicked() {
+			a.discardReviewEdit()
+		}
 	})
 }
 
@@ -501,13 +543,23 @@ func (a *application) reviewDecisionView(c *ui.Context) {
 				break
 			}
 		}
-		if !a.admin() || !s.current() || flag(entry, "published") { return }
-		if reviewSelect(c, "裁决", &s.draft.DecisionStatus, reviewDecisions, a.busy) { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.DecisionReason).Label("裁决理由").Height(95).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
+		if !a.admin() || !s.current() || flag(entry, "published") {
+			return
+		}
+		if reviewSelect(c, "裁决", &s.draft.DecisionStatus, reviewDecisions, a.busy) {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.DecisionReason).Label("裁决理由").Height(95).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
 		ui.Checkbox(c, &s.continueNext, "裁决后继续审核下一条").Disabled(a.busy)
 		invalid := s.draft.DecisionStatus == "approved" && len(reviewStrings(s.detail["errors"])) > 0
-		if invalid { ui.Text(c, "当前内容有格式错误，不能通过。") }
-		if ui.PrimaryButton(c, "确认管理员决定").Disabled(a.busy || s.editDirty() || invalid || strings.TrimSpace(s.draft.DecisionReason) == "").Clicked() { a.submitReviewDecision() }
+		if invalid {
+			ui.Text(c, "当前内容有格式错误，不能通过。")
+		}
+		if ui.PrimaryButton(c, "确认管理员决定").Disabled(a.busy || s.editDirty() || invalid || strings.TrimSpace(s.draft.DecisionReason) == "").Clicked() {
+			a.submitReviewDecision()
+		}
 	})
 }
 
@@ -518,16 +570,28 @@ func (a *application) reviewRecordsView(c *ui.Context) {
 	ui.Checkbox(c, &s.showHistory, "包含其他版本的记录")
 	visible := 0
 	for _, record := range objects(s.detail, "reviews") {
-		if str(record, "parent_id") != "" || (!s.showHistory && str(record, "revision_id") != str(entry, "id")) { continue }
+		if str(record, "parent_id") != "" || (!s.showHistory && str(record, "revision_id") != str(entry, "id")) {
+			continue
+		}
 		visible++
 		ui.Column(c).Gap(6).Padding(12).Children(func() {
 			ui.Text(c, str(record, "author")+" · "+reviewLabel(str(record, "verdict"))+" · "+str(record, "created_at")).Bold()
-			if flag(record, "stale") { ui.Text(c, "历史版本记录") }
-			if quote := str(record, "quote"); quote != "" { ui.Text(c, "引用："+quote) }
+			if flag(record, "stale") {
+				ui.Text(c, "历史版本记录")
+			}
+			if quote := str(record, "quote"); quote != "" {
+				ui.Text(c, "引用："+quote)
+			}
 			ui.Text(c, str(record, "body"))
-			if suggestion := str(record, "suggestion"); suggestion != "" { ui.Text(c, "建议文本："+suggestion) }
-			if evidence := str(record, "evidence"); evidence != "" { ui.Text(c, "依据："+evidence) }
-			if resolution := str(record, "resolution"); resolution != "open" { ui.Text(c, "处理结果："+reviewLabel(resolution)+" · "+str(record, "resolution_note")) }
+			if suggestion := str(record, "suggestion"); suggestion != "" {
+				ui.Text(c, "建议文本："+suggestion)
+			}
+			if evidence := str(record, "evidence"); evidence != "" {
+				ui.Text(c, "依据："+evidence)
+			}
+			if resolution := str(record, "resolution"); resolution != "open" {
+				ui.Text(c, "处理结果："+reviewLabel(resolution)+" · "+str(record, "resolution_note"))
+			}
 			ui.Row(c).Gap(8).Children(func() {
 				if ui.Button(c, "回复").Disabled(a.busy).Clicked() {
 					if s.draft.ReplyTarget != "" && s.draft.ReplyTarget != str(record, "id") && strings.TrimSpace(s.draft.ReplyBody) != "" {
@@ -544,7 +608,9 @@ func (a *application) reviewRecordsView(c *ui.Context) {
 					} else {
 						if s.draft.ResolveTarget != str(record, "id") {
 							s.draft.Resolution, s.draft.ResolutionNote = str(record, "resolution"), str(record, "resolution_note")
-							if s.draft.Resolution == "open" || s.draft.Resolution == "" { s.draft.Resolution = "accepted" }
+							if s.draft.Resolution == "open" || s.draft.Resolution == "" {
+								s.draft.Resolution = "accepted"
+							}
 						}
 						s.draft.ResolveTarget = str(record, "id")
 						s.resolveOpen = true
@@ -559,27 +625,53 @@ func (a *application) reviewRecordsView(c *ui.Context) {
 			}
 		})
 	}
-	if visible == 0 { ui.Text(c, "暂无审核记录。") }
+	if visible == 0 {
+		ui.Text(c, "暂无审核记录。")
+	}
 	if s.draft.ReplyTarget != "" && !s.replyOpen {
-		if ui.Button(c, "继续回复草稿").Disabled(a.busy).Clicked() { s.replyOpen = true }
+		if ui.Button(c, "继续回复草稿").Disabled(a.busy).Clicked() {
+			s.replyOpen = true
+		}
 	}
 	if s.draft.ReplyTarget != "" && s.replyOpen {
 		ui.Text(c, "回复审核记录").Bold()
-		for _, record := range objects(s.detail, "reviews") { if str(record, "id") == s.draft.ReplyTarget { ui.Text(c, str(record, "author")+"："+str(record, "body")) } }
-		if ui.TextArea(c, &s.draft.ReplyBody).Label("回复内容").Height(100).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-		if ui.PrimaryButton(c, "提交回复").Disabled(a.busy || strings.TrimSpace(s.draft.ReplyBody) == "").Clicked() { a.submitReviewReply() }
-		if ui.Button(c, "关闭回复（保留草稿）").Disabled(a.busy).Clicked() { s.replyOpen = false; a.scheduleReviewSave() }
+		for _, record := range objects(s.detail, "reviews") {
+			if str(record, "id") == s.draft.ReplyTarget {
+				ui.Text(c, str(record, "author")+"："+str(record, "body"))
+			}
+		}
+		if ui.TextArea(c, &s.draft.ReplyBody).Label("回复内容").Height(100).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
+		if ui.PrimaryButton(c, "提交回复").Disabled(a.busy || strings.TrimSpace(s.draft.ReplyBody) == "").Clicked() {
+			a.submitReviewReply()
+		}
+		if ui.Button(c, "关闭回复（保留草稿）").Disabled(a.busy).Clicked() {
+			s.replyOpen = false
+			a.scheduleReviewSave()
+		}
 	}
 	if a.admin() && s.draft.ResolveTarget != "" && !s.resolveOpen {
-		if ui.Button(c, "继续处理意见草稿").Disabled(a.busy).Clicked() { s.resolveOpen = true }
+		if ui.Button(c, "继续处理意见草稿").Disabled(a.busy).Clicked() {
+			s.resolveOpen = true
+		}
 	}
 	if a.admin() && s.draft.ResolveTarget != "" && s.resolveOpen {
 		ui.Text(c, "处理成员意见").Bold()
-		if reviewSelect(c, "处理结果", &s.draft.Resolution, reviewResolutions, a.busy) { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.ResolutionNote).Label("处理说明").Height(100).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
+		if reviewSelect(c, "处理结果", &s.draft.Resolution, reviewResolutions, a.busy) {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.ResolutionNote).Label("处理说明").Height(100).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
 		ui.Text(c, "采纳意见只记录处理结果；正文需要另行修订。")
-		if ui.PrimaryButton(c, "保存处理结果").Disabled(a.busy || strings.TrimSpace(s.draft.ResolutionNote) == "").Clicked() { a.resolveReview() }
-		if ui.Button(c, "关闭处理说明（保留草稿）").Disabled(a.busy).Clicked() { s.resolveOpen = false; a.scheduleReviewSave() }
+		if ui.PrimaryButton(c, "保存处理结果").Disabled(a.busy || strings.TrimSpace(s.draft.ResolutionNote) == "").Clicked() {
+			a.resolveReview()
+		}
+		if ui.Button(c, "关闭处理说明（保留草稿）").Disabled(a.busy).Clicked() {
+			s.resolveOpen = false
+			a.scheduleReviewSave()
+		}
 	}
 }
 
@@ -587,22 +679,41 @@ func (a *application) reviewFormView(c *ui.Context) {
 	s := &a.review
 	ui.Column(c).Gap(8).Padding(12).Children(func() {
 		ui.Text(c, "提交审核意见").FontSize(18).Bold()
-		if reviewSelect(c, "你的判断", &s.draft.Verdict, reviewVerdicts, a.busy) { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.Body).Label("意见说明（必填）").Height(115).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.Quote).Label("引用原文").Height(70).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.Suggestion).Label("建议文本").Height(100).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
-		if ui.TextArea(c, &s.draft.Evidence).Label("依据（节目期数、时间码或来源链接）").Height(80).FillWidth().Disabled(a.busy).Changed() { a.scheduleReviewSave() }
+		if reviewSelect(c, "你的判断", &s.draft.Verdict, reviewVerdicts, a.busy) {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.Body).Label("意见说明（必填）").Height(115).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.Quote).Label("引用原文").Height(70).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.Suggestion).Label("建议文本").Height(100).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
+		if ui.TextArea(c, &s.draft.Evidence).Label("依据（节目期数、时间码或来源链接）").Height(80).FillWidth().Disabled(a.busy).Changed() {
+			a.scheduleReviewSave()
+		}
 		ui.Text(c, "审核意见不会自动改变管理员裁决。")
 		ui.Row(c).Gap(8).Children(func() {
-			if ui.Button(c, "提交记录").Disabled(a.busy || strings.TrimSpace(s.draft.Body) == "").Clicked() { a.submitReviewRecord(false) }
-			if ui.PrimaryButton(c, "提交并继续").Disabled(a.busy || strings.TrimSpace(s.draft.Body) == "").Clicked() { a.submitReviewRecord(true) }
+			if ui.Button(c, "提交记录").Disabled(a.busy || strings.TrimSpace(s.draft.Body) == "").Clicked() {
+				a.submitReviewRecord(false)
+			}
+			if ui.PrimaryButton(c, "提交并继续").Disabled(a.busy || strings.TrimSpace(s.draft.Body) == "").Clicked() {
+				a.submitReviewRecord(true)
+			}
 		})
 	})
 }
 
 func (a *application) reloadReview(revision string) {
-	if a.busy { return }
-	if err := a.saveReviewDrafts(); err != nil { a.error = err.Error(); return }
+	if a.busy {
+		return
+	}
+	if err := a.saveReviewDrafts(); err != nil {
+		a.error = err.Error()
+		return
+	}
 	s := &a.review
 	a.loadReviewRevision(s.entryID, s.query, revision, s.compare, false)
 }
@@ -611,7 +722,9 @@ func (a *application) compareReview(comparison string) {
 	id, revision := a.review.entryID, str(obj(a.review.detail, "entry"), "id")
 	a.run("读取版本差异", func(ctx context.Context) (func(), error) {
 		detail, diff, err := a.fetchReview(ctx, id, revision, comparison)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		return func() {
 			// Only comparison data changes. Unsaved form values and the edit base
 			// must remain exactly what the user was editing.
@@ -624,17 +737,28 @@ func (a *application) compareReview(comparison string) {
 }
 
 func (a *application) nextReview() {
-	if a.busy { return }
-	if err := a.saveReviewDrafts(); err != nil { a.error = err.Error(); return }
+	if a.busy {
+		return
+	}
+	if err := a.saveReviewDrafts(); err != nil {
+		a.error = err.Error()
+		return
+	}
 	query, anchor := a.review.query, a.review.anchor
 	a.run("读取下一条审核", func(ctx context.Context) (func(), error) {
 		var result object
-		if err := a.client.Get(ctx, "/entries?"+reviewNextQuery(query, anchor), &result); err != nil { return nil, err }
+		if err := a.client.Get(ctx, "/entries?"+reviewNextQuery(query, anchor), &result); err != nil {
+			return nil, err
+		}
 		items := objects(result, "items")
-		if len(items) == 0 { return func() { a.review.queueDone = true }, nil }
+		if len(items) == 0 {
+			return func() { a.review.queueDone = true }, nil
+		}
 		id := str(items[0], "entry_id")
 		detail, diff, err := a.fetchReview(ctx, id, "", "previous")
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		return func() { a.installReview(id, query, "previous", detail, diff); a.page = "review" }, nil
 	})
 }
@@ -646,7 +770,11 @@ func (a *application) reviewMutationSaved(message string, next bool) {
 		return
 	}
 	a.status = message
-	if next { a.nextReview() } else { a.reloadReview(str(obj(a.review.detail, "entry"), "id")) }
+	if next {
+		a.nextReview()
+	} else {
+		a.reloadReview(str(obj(a.review.detail, "entry"), "id"))
+	}
 }
 
 func (a *application) submitReviewRecord(next bool) {
@@ -659,7 +787,9 @@ func (a *application) submitReviewRecord(next bool) {
 	id := s.entryID
 	payload := object{"revision_id": str(entry, "id"), "verdict": s.draft.Verdict, "body": s.draft.Body, "quote": s.draft.Quote, "suggestion": s.draft.Suggestion, "evidence": s.draft.Evidence}
 	a.run("提交审核记录", func(ctx context.Context) (func(), error) {
-		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/reviews", payload, nil); err != nil { return nil, err }
+		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/reviews", payload, nil); err != nil {
+			return nil, err
+		}
 		return func() {
 			a.review.draft.Body, a.review.draft.Quote, a.review.draft.Suggestion, a.review.draft.Evidence = "", "", "", ""
 			a.reviewMutationSaved("审核记录已提交", next)
@@ -672,7 +802,9 @@ func (a *application) submitReviewReply() {
 	id := s.entryID
 	payload := object{"revision_id": s.draft.ReplyRevision, "parent_id": s.draft.ReplyTarget, "verdict": "reply", "body": s.draft.ReplyBody}
 	a.run("提交回复", func(ctx context.Context) (func(), error) {
-		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/reviews", payload, nil); err != nil { return nil, err }
+		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/reviews", payload, nil); err != nil {
+			return nil, err
+		}
 		return func() {
 			a.review.draft.ReplyTarget, a.review.draft.ReplyRevision, a.review.draft.ReplyBody = "", "", ""
 			a.reviewMutationSaved("回复已保存", false)
@@ -685,7 +817,9 @@ func (a *application) resolveReview() {
 	id := s.draft.ResolveTarget
 	payload := object{"resolution": s.draft.Resolution, "note": s.draft.ResolutionNote}
 	a.run("保存意见处理结果", func(ctx context.Context) (func(), error) {
-		if err := a.client.Patch(ctx, "/reviews/"+url.PathEscape(id), payload, nil); err != nil { return nil, err }
+		if err := a.client.Patch(ctx, "/reviews/"+url.PathEscape(id), payload, nil); err != nil {
+			return nil, err
+		}
 		return func() {
 			a.review.draft.ResolveTarget, a.review.draft.ResolutionNote = "", ""
 			a.reviewMutationSaved("意见处理结果已保存", false)
@@ -696,9 +830,13 @@ func (a *application) resolveReview() {
 func (a *application) assignReview(userID string) {
 	id := a.review.entryID
 	var value any
-	if userID != "" { value = userID }
+	if userID != "" {
+		value = userID
+	}
 	a.run("分配审核任务", func(ctx context.Context) (func(), error) {
-		if err := a.client.Put(ctx, "/entries/"+url.PathEscape(id)+"/assignee", object{"user_id": value}, nil); err != nil { return nil, err }
+		if err := a.client.Put(ctx, "/entries/"+url.PathEscape(id)+"/assignee", object{"user_id": value}, nil); err != nil {
+			return nil, err
+		}
 		return func() { a.status = "审核任务已更新"; a.reloadReview(str(obj(a.review.detail, "entry"), "id")) }, nil
 	})
 }
@@ -706,35 +844,52 @@ func (a *application) assignReview(userID string) {
 func (a *application) submitReviewDecision() {
 	s := &a.review
 	entry := obj(s.detail, "entry")
-	if !a.admin() || !s.current() || s.editDirty() || flag(entry, "published") { return }
+	if !a.admin() || !s.current() || s.editDirty() || flag(entry, "published") {
+		return
+	}
 	id, next := s.entryID, s.continueNext
 	payload := object{"revision_id": str(entry, "id"), "status": s.draft.DecisionStatus, "reason": s.draft.DecisionReason}
 	title := str(entry, "title")
 	a.run("保存管理员决定", func(ctx context.Context) (func(), error) {
 		answer, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: a.window, Type: mygo.MessageQuestion, Title: "确认管理员决定", Message: title + " · " + reviewLabel(str(payload, "status")), Detail: str(payload, "reason"), Buttons: []string{"取消", "确认"}, DefaultButton: 0, CancelButton: 0})
-		if err != nil { return nil, err }
-		if answer.Button != 1 { return nil, nil }
-		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/decision", payload, nil); err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
+		if answer.Button != 1 {
+			return nil, nil
+		}
+		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/decision", payload, nil); err != nil {
+			return nil, err
+		}
 		return func() { a.review.draft.DecisionReason = ""; a.reviewMutationSaved("管理员决定已保存", next) }, nil
 	})
 }
 
 func (a *application) submitRevision() {
 	s := &a.review
-	if !a.admin() || !s.current() || s.edit.BaseRevision != str(obj(s.detail, "entry"), "id") { return }
+	if !a.admin() || !s.current() || s.edit.BaseRevision != str(obj(s.detail, "entry"), "id") {
+		return
+	}
 	id := s.entryID
 	payload := object{"base_revision": s.edit.BaseRevision, "content": s.edit.Content, "source": s.edit.Source, "operation": "upsert"}
-	if s.edit.Delete { payload["operation"] = "delete" }
+	if s.edit.Delete {
+		payload["operation"] = "delete"
+	}
 	a.run("保存正文新版本", func(ctx context.Context) (func(), error) {
 		var revision object
-		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/revisions", payload, &revision); err != nil { return nil, err }
+		if err := a.client.Post(ctx, "/entries/"+url.PathEscape(id)+"/revisions", payload, &revision); err != nil {
+			return nil, err
+		}
 		return func() {
 			// POST succeeded even if a later refresh fails. Persist the returned
 			// base before refreshing so that an old base is never re-submitted.
 			a.review.edit.BaseRevision = str(revision, "id")
 			a.review.tab = "diff"
 			a.review.dirty = true
-			if err := a.saveReviewDrafts(); err != nil { a.error = "新版本已保存，但草稿状态保存失败："+err.Error(); return }
+			if err := a.saveReviewDrafts(); err != nil {
+				a.error = "新版本已保存，但草稿状态保存失败：" + err.Error()
+				return
+			}
 			a.status = "新版本已保存"
 			a.reloadReview("")
 		}, nil
@@ -745,12 +900,18 @@ func (a *application) discardReviewEdit() {
 	entry := obj(a.review.detail, "entry")
 	a.run("处理修订草稿", func(ctx context.Context) (func(), error) {
 		answer, err := mygo.Dialog.Message(mygo.MessageOptions{Parent: a.window, Type: mygo.MessageQuestion, Title: "丢弃正文草稿", Message: "恢复当前展示版本的正文与来源？", Buttons: []string{"保留草稿", "丢弃"}, DefaultButton: 0, CancelButton: 0})
-		if err != nil { return nil, err }
-		if answer.Button != 1 { return nil, nil }
+		if err != nil {
+			return nil, err
+		}
+		if answer.Button != 1 {
+			return nil, nil
+		}
 		return func() {
 			a.review.edit = reviewEditDraft{Content: str(entry, "content"), Source: str(entry, "source"), BaseRevision: str(entry, "id"), Delete: str(entry, "operation") == "delete"}
 			a.review.dirty = true
-			if err := a.saveReviewDrafts(); err != nil { a.error = err.Error() }
+			if err := a.saveReviewDrafts(); err != nil {
+				a.error = err.Error()
+			}
 		}, nil
 	})
 }

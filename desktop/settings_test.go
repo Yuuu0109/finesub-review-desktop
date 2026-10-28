@@ -34,7 +34,7 @@ func newSettingsTestApplication(t *testing.T, role string) *application {
 			"name": "测试知识库", "profile": "legacy-preserve",
 			"profiles": object{
 				"legacy-preserve": object{"name": "现有 Markdown · 保留分类"},
-				"finesub-0.6.0": object{"name": "FineSub 0.6.0 · schema 6"},
+				"finesub-0.6.0":   object{"name": "FineSub 0.6.0 · schema 6"},
 			},
 		},
 	}

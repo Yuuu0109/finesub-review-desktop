@@ -4,6 +4,8 @@
 
 当前开发版本为 **0.5.0**。是否可用于正式交付以 [验收记录](VALIDATION.md) 为准；本仓库的构建产物不会自动发布为正式 Release。
 
+本版已通过 [Windows Go 测试、原生构建及窗口首帧检查](https://github.com/Yuuu0109/finesub-review-desktop/actions/runs/40630500085)，以及 [独立网页测试和生产构建](https://github.com/Yuuu0109/finesub-review-desktop/actions/runs/40630505690)。当前提供 CI 开发产物；签名发布包、实际服务器业务和真实跨版本升级尚未完成验收。
+
 ## 下载与使用
 
 正式版本从 [Releases](https://github.com/Yuuu0109/finesub-review-desktop/releases) 下载 `FineSub Review.exe`，放在用户可写目录后双击运行。Windows 10 / 11 x64，原生界面使用 Direct3D 11。
@@ -55,7 +57,7 @@ mygo build
 
 ## 验证与交付
 
-Windows CI 对 PR 和开发分支执行 Go 测试、原生 EXE 构建及版本检查。正式分支、版本标签或手动工作流可进一步生成签名发布产物，工作流只上传 Actions artifact。
+Windows CI 对 PR 和开发分支执行 Go 测试、原生 EXE 构建、版本检查及真实窗口首帧冒烟检查。已验证提交 `2dd69ac8ec283f2ac130d2bcefaa3c9164707778` 的 37 个顶层 Go 测试及这些检查均通过。正式分支、版本标签或手动工作流可进一步生成签名发布产物，工作流只上传 Actions artifact。
 
-正式发布前还需要在 Windows 实机完成首次启动、中文输入、权限操作、重启后的身份/草稿恢复和跨版本更新验收。代码编译通过或签名正确不代表这些使用流程已经验收。当前证据和待测项见 [VALIDATION.md](VALIDATION.md)。
+正式发布前还需要在用户 Windows 环境完成真实中文输入法、实际服务器权限与业务操作、重启后的身份/草稿恢复和跨版本更新验收。UI 测试的中文文本注入不等于真实输入法测试；CI 首帧成功也不代表这些流程全部通过。当前证据和待测项见 [VALIDATION.md](VALIDATION.md)。
 

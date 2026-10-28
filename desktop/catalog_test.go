@@ -37,7 +37,7 @@ func TestCatalogQueuePreservesScopeAndEscapesSearch(t *testing.T) {
 func TestNativeKnowledgeListDisplaysReviewMetadata(t *testing.T) {
 	app := &application{
 		page: "mine", busy: true,
-		user: object{"id": "member-1", "role": "member"},
+		user:   object{"id": "member-1", "role": "member"},
 		people: []object{{"id": "member-1", "name": "审核成员"}},
 		catalog: catalogState{Page: 1, Total: 1, Rows: []object{{
 			"id": "revision-1", "entry_id": "entry-1", "title": "测试知识",
@@ -59,7 +59,7 @@ func TestNativeStreamerRendersMarkdownWithoutChangingSource(t *testing.T) {
 	app := &application{page: "streamer", busy: true, user: object{"role": "member"}, catalog: catalogState{
 		StreamerID: "streamer-1", StreamPage: 1, StreamTotal: 1,
 		Streamers: []object{{"id": "rev-1", "entry_id": "streamer-1", "title": "主播名字"}},
-		Profile: object{"entry": object{"entry_id": "streamer-1", "title": "主播名字", "category": "streamer", "content": source}},
+		Profile:   object{"entry": object{"entry_id": "streamer-1", "title": "主播名字", "category": "streamer", "content": source}},
 	}}
 	view := ui.NewTester(app.streamerView, 1280, 860)
 	if !view.HasText("主播完整档案") {

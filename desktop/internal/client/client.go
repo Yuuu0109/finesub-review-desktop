@@ -33,28 +33,28 @@ type Secrets interface {
 }
 
 type sessionCookie struct {
-	Name string `json:"name"`
-	Value string `json:"value"`
+	Name    string    `json:"name"`
+	Value   string    `json:"value"`
 	Expires time.Time `json:"expires"`
-	Secure bool `json:"secure"`
+	Secure  bool      `json:"secure"`
 }
 
 var cookieNames = []string{"review_access", "review_session"}
 
 type Client struct {
-	server string
-	origin *url.URL
-	http *http.Client
+	server  string
+	origin  *url.URL
+	http    *http.Client
 	secrets Secrets
-	mu sync.Mutex
+	mu      sync.Mutex
 	cookies map[string]sessionCookie
-	csrf string
+	csrf    string
 }
 
 // APIError preserves the HTTP status without retaining request credentials or
 // bodies. A mutation that fails is never retried automatically.
 type APIError struct {
-	Status int
+	Status  int
 	Message string
 }
 
@@ -65,7 +65,9 @@ type HTTPError = APIError
 
 func StatusCode(err error) int {
 	var apiErr *APIError
-	if errors.As(err, &apiErr) { return apiErr.Status }
+	if errors.As(err, &apiErr) {
+		return apiErr.Status
+	}
 	return 0
 }
 
@@ -89,34 +91,48 @@ func NormalizeServer(raw string) (string, error) {
 	port := u.Port()
 	if port != "" {
 		n, err := strconv.Atoi(port)
-		if err != nil || n < 1 || n > 65535 { return "", errors.New("服务器端口无效") }
+		if err != nil || n < 1 || n > 65535 {
+			return "", errors.New("服务器端口无效")
+		}
 	}
-	if strings.Contains(host, ":") { host = "["+host+"]" }
-	if port != "" && !((u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80")) { host += ":"+port }
-	return u.Scheme+"://"+host, nil
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	if port != "" && !((u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80")) {
+		host += ":" + port
+	}
+	return u.Scheme + "://" + host, nil
 }
 
 func New(server string, secrets Secrets) (*Client, error) {
 	origin, err := NormalizeServer(server)
-	if err != nil { return nil, err }
-	if secrets == nil { return nil, errors.New("缺少系统凭据存储，无法保存审核会话") }
+	if err != nil {
+		return nil, err
+	}
+	if secrets == nil {
+		return nil, errors.New("缺少系统凭据存储，无法保存审核会话")
+	}
 	u, _ := url.Parse(origin)
 	c := &Client{
 		server: origin, origin: u, secrets: secrets, cookies: make(map[string]sessionCookie),
 		http: &http.Client{
-			Timeout: 120*time.Second,
+			Timeout: 120 * time.Second,
 			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{Timeout: 15*time.Second, KeepAlive: 30*time.Second}).DialContext,
-				TLSHandshakeTimeout: 15*time.Second, ResponseHeaderTimeout: 30*time.Second,
+				Proxy:               http.ProxyFromEnvironment,
+				DialContext:         (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+				TLSHandshakeTimeout: 15 * time.Second, ResponseHeaderTimeout: 30 * time.Second,
 			},
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 	}
 	for _, name := range cookieNames {
 		data, err := secrets.Get(c.secretKey(name))
-		if errors.Is(err, fs.ErrNotExist) || (err == nil && len(data) == 0) { continue }
-		if err != nil { return nil, fmt.Errorf("无法读取系统保存的审核会话: %w", err) }
+		if errors.Is(err, fs.ErrNotExist) || (err == nil && len(data) == 0) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("无法读取系统保存的审核会话: %w", err)
+		}
 		var cookie sessionCookie
 		if err := json.Unmarshal(data, &cookie); err != nil || cookie.Name != name || cookie.Value == "" || cookie.Expires.IsZero() {
 			return nil, errors.New("系统保存的审核会话损坏，请清除此服务器的会话后重新登录")
@@ -125,7 +141,9 @@ func New(server string, secrets Secrets) (*Client, error) {
 			return nil, errors.New("系统保存的审核会话格式无效，请清除此服务器的会话后重新登录")
 		}
 		if !cookie.Expires.After(time.Now()) {
-			if err := c.deleteSecret(name); err != nil { return nil, err }
+			if err := c.deleteSecret(name); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		c.cookies[name] = cookie
@@ -143,13 +161,17 @@ func (c *Client) SetCSRF(token string) {
 
 func (c *Client) secretKey(name string) string {
 	hash := sha256.Sum256([]byte(c.server))
-	return "review-session/"+hex.EncodeToString(hash[:])+"/"+name
+	return "review-session/" + hex.EncodeToString(hash[:]) + "/" + name
 }
 
 func (c *Client) deleteSecret(name string) error {
 	err := c.secrets.Delete(c.secretKey(name))
-	if errors.Is(err, fs.ErrNotExist) { return nil }
-	if err != nil { return fmt.Errorf("无法移除系统保存的审核会话: %w", err) }
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("无法移除系统保存的审核会话: %w", err)
+	}
 	return nil
 }
 
@@ -161,7 +183,9 @@ func (c *Client) ClearSession() error {
 	c.csrf = ""
 	c.cookies = make(map[string]sessionCookie)
 	var result error
-	for _, name := range cookieNames { result = errors.Join(result, c.deleteSecret(name)) }
+	for _, name := range cookieNames {
+		result = errors.Join(result, c.deleteSecret(name))
+	}
 	return result
 }
 
@@ -175,31 +199,49 @@ func (c *Client) apiURL(path string) (string, error) {
 		return "", errors.New("无效的 API 路径")
 	}
 	u, err := url.Parse(path)
-	if err != nil || u.IsAbs() || u.Host != "" || u.Fragment != "" { return "", errors.New("无效的 API 路径") }
+	if err != nil || u.IsAbs() || u.Host != "" || u.Fragment != "" {
+		return "", errors.New("无效的 API 路径")
+	}
 	// Decode before checking segments so encoded traversal cannot leave /api.
 	decoded := u.Path
 	for n := 0; n < 3; n++ {
-		if strings.ContainsAny(decoded, "\\\x00") { return "", errors.New("API 路径不能离开审核服务") }
+		if strings.ContainsAny(decoded, "\\\x00") {
+			return "", errors.New("API 路径不能离开审核服务")
+		}
 		for _, segment := range strings.Split(decoded, "/") {
-			if segment == "." || segment == ".." { return "", errors.New("API 路径不能离开审核服务") }
+			if segment == "." || segment == ".." {
+				return "", errors.New("API 路径不能离开审核服务")
+			}
 		}
 		next, err := url.PathUnescape(decoded)
-		if err != nil || next == decoded { break }
+		if err != nil || next == decoded {
+			break
+		}
 		decoded = next
 	}
-	return c.server+"/api"+path, nil
+	return c.server + "/api" + path, nil
 }
 
 func (c *Client) request(ctx context.Context, method, path string, body io.Reader, contentType string, length int64) (*http.Response, error) {
 	endpoint, err := c.apiURL(path)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
-	if err != nil { return nil, err }
-	if length >= 0 { req.ContentLength = length }
+	if err != nil {
+		return nil, err
+	}
+	if length >= 0 {
+		req.ContentLength = length
+	}
 	req.Header.Set("Accept", "application/json")
-	if contentType != "" { req.Header.Set("Content-Type", contentType) }
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 	c.mu.Lock()
-	if c.csrf != "" { req.Header.Set("X-CSRF-Token", c.csrf) }
+	if c.csrf != "" {
+		req.Header.Set("X-CSRF-Token", c.csrf)
+	}
 	for _, name := range cookieNames {
 		cookie, ok := c.cookies[name]
 		if ok && (cookie.Expires.IsZero() || cookie.Expires.After(time.Now())) && (!cookie.Secure || c.origin.Scheme == "https") {
@@ -209,12 +251,17 @@ func (c *Client) request(ctx context.Context, method, path string, body io.Reade
 	c.mu.Unlock()
 	response, err := c.http.Do(req)
 	if err != nil {
-		if errors.Is(err, context.Canceled) { return nil, unconfirmed(method, context.Canceled) }
+		if errors.Is(err, context.Canceled) {
+			return nil, unconfirmed(method, context.Canceled)
+		}
 		// net/url errors may contain query parameters; do not expose request URLs
 		// or credentials in UI errors or logs.
 		return nil, unconfirmed(method, errors.New("无法连接审核服务器，请检查网络、服务器地址和 HTTPS 证书"))
 	}
-	if err := c.receiveCookies(response.Cookies()); err != nil { response.Body.Close(); return nil, err }
+	if err := c.receiveCookies(response.Cookies()); err != nil {
+		response.Body.Close()
+		return nil, err
+	}
 	return response, nil
 }
 
@@ -222,26 +269,42 @@ func (c *Client) receiveCookies(cookies []*http.Cookie) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, cookie := range cookies {
-		if cookie.Name != "review_access" && cookie.Name != "review_session" { continue }
-		if cookie.Domain != "" && !strings.EqualFold(strings.TrimPrefix(cookie.Domain,"."), c.origin.Hostname()) { continue }
-		if cookie.Path != "" && cookie.Path != "/" { continue }
+		if cookie.Name != "review_access" && cookie.Name != "review_session" {
+			continue
+		}
+		if cookie.Domain != "" && !strings.EqualFold(strings.TrimPrefix(cookie.Domain, "."), c.origin.Hostname()) {
+			continue
+		}
+		if cookie.Path != "" && cookie.Path != "/" {
+			continue
+		}
 		if cookie.MaxAge < 0 || cookie.Value == "" || (cookie.MaxAge == 0 && !cookie.Expires.IsZero() && !cookie.Expires.After(time.Now())) {
 			delete(c.cookies, cookie.Name)
-			if err := c.deleteSecret(cookie.Name); err != nil { return err }
+			if err := c.deleteSecret(cookie.Name); err != nil {
+				return err
+			}
 			continue
 		}
 		expires := cookie.Expires
-		if cookie.MaxAge > 0 { expires = time.Now().Add(time.Duration(cookie.MaxAge)*time.Second) }
+		if cookie.MaxAge > 0 {
+			expires = time.Now().Add(time.Duration(cookie.MaxAge) * time.Second)
+		}
 		entry := sessionCookie{Name: cookie.Name, Value: cookie.Value, Expires: expires, Secure: cookie.Secure}
 		c.cookies[cookie.Name] = entry
 		if expires.IsZero() {
 			// Respect a session-only cookie instead of making it persistent.
-			if err := c.deleteSecret(cookie.Name); err != nil { return err }
+			if err := c.deleteSecret(cookie.Name); err != nil {
+				return err
+			}
 			continue
 		}
 		data, err := json.Marshal(entry)
-		if err != nil { return err }
-		if len(data) > 2560 { return errors.New("审核会话超过系统凭据存储上限，无法安全保存") }
+		if err != nil {
+			return err
+		}
+		if len(data) > 2560 {
+			return errors.New("审核会话超过系统凭据存储上限，无法安全保存")
+		}
 		if err := c.secrets.Set(c.secretKey(cookie.Name), data); err != nil {
 			return fmt.Errorf("服务器已响应，但无法安全保存审核会话；请检查系统凭据存储: %w", err)
 		}
@@ -270,13 +333,19 @@ func (c *Client) json(ctx context.Context, method, path string, value any, out a
 	var err error
 	contentType := ""
 	if value != nil || method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
-		if value == nil { value = map[string]any{} }
+		if value == nil {
+			value = map[string]any{}
+		}
 		data, err = json.Marshal(value)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		contentType = "application/json"
 	}
 	response, err := c.request(ctx, method, path, bytes.NewReader(data), contentType, int64(len(data)))
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer response.Body.Close()
 	return unconfirmed(method, c.decode(response, path, out))
 }
@@ -284,48 +353,87 @@ func (c *Client) json(ctx context.Context, method, path string, value any, out a
 // A write may have committed before the connection or response decoding failed.
 // Do not encourage a second POST merely because its result did not arrive.
 func unconfirmed(method string, err error) error {
-	if err == nil || method == http.MethodGet || method == http.MethodHead { return err }
+	if err == nil || method == http.MethodGet || method == http.MethodHead {
+		return err
+	}
 	var apiErr *APIError
-	if errors.As(err, &apiErr) { return err }
+	if errors.As(err, &apiErr) {
+		return err
+	}
 	return fmt.Errorf("请求结果尚未确认，请先刷新核对后再决定是否重试：%w", err)
 }
 
 func (c *Client) decode(response *http.Response, path string, out any) error {
-	if response.StatusCode < 200 || response.StatusCode >= 300 { return responseError(response) }
-	if response.StatusCode == http.StatusNoContent { return nil }
-	const maxJSON = 64 << 20
-	data, err := io.ReadAll(io.LimitReader(response.Body, maxJSON+1))
-	if err != nil { return fmt.Errorf("读取服务器响应失败: %w", err) }
-	if len(data) > maxJSON { return errors.New("服务器响应过大") }
-	if len(bytes.TrimSpace(data)) == 0 { return nil }
-	if strings.HasPrefix(path, "/auth/") {
-		var auth struct{ CSRF string `json:"csrf"` }
-		if json.Unmarshal(data, &auth) == nil && auth.CSRF != "" { c.SetCSRF(auth.CSRF) }
-		if path == "/auth/leave" { c.SetCSRF("") }
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return responseError(response)
 	}
-	if out == nil {
-		if !json.Valid(data) { return errors.New("服务器返回了无效的 JSON") }
+	if response.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	if err := json.Unmarshal(data, out); err != nil { return errors.New("服务器响应格式不兼容") }
+	const maxJSON = 64 << 20
+	data, err := io.ReadAll(io.LimitReader(response.Body, maxJSON+1))
+	if err != nil {
+		return fmt.Errorf("读取服务器响应失败: %w", err)
+	}
+	if len(data) > maxJSON {
+		return errors.New("服务器响应过大")
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return nil
+	}
+	if strings.HasPrefix(path, "/auth/") {
+		var auth struct {
+			CSRF string `json:"csrf"`
+		}
+		if json.Unmarshal(data, &auth) == nil && auth.CSRF != "" {
+			c.SetCSRF(auth.CSRF)
+		}
+		if path == "/auth/leave" {
+			c.SetCSRF("")
+		}
+	}
+	if out == nil {
+		if !json.Valid(data) {
+			return errors.New("服务器返回了无效的 JSON")
+		}
+		return nil
+	}
+	if err := json.Unmarshal(data, out); err != nil {
+		return errors.New("服务器响应格式不兼容")
+	}
 	return nil
 }
 
 func responseError(response *http.Response) error {
 	data, _ := io.ReadAll(io.LimitReader(response.Body, 64<<10))
 	message := fmt.Sprintf("请求失败（HTTP %d）", response.StatusCode)
-	var payload struct{ Detail json.RawMessage `json:"detail"` }
+	var payload struct {
+		Detail json.RawMessage `json:"detail"`
+	}
 	if json.Unmarshal(data, &payload) == nil {
 		var detail string
-		if json.Unmarshal(payload.Detail, &detail) == nil && detail != "" { message = detail } else {
-			var details []struct{ Message string `json:"msg"`; Location []any `json:"loc"` }
+		if json.Unmarshal(payload.Detail, &detail) == nil && detail != "" {
+			message = detail
+		} else {
+			var details []struct {
+				Message  string `json:"msg"`
+				Location []any  `json:"loc"`
+			}
 			if json.Unmarshal(payload.Detail, &details) == nil {
-				parts := make([]string,0,len(details))
-				for _, item := range details { if item.Message != "" { parts = append(parts,item.Message) } }
-				if len(parts)>0 { message = strings.Join(parts,"；") }
+				parts := make([]string, 0, len(details))
+				for _, item := range details {
+					if item.Message != "" {
+						parts = append(parts, item.Message)
+					}
+				}
+				if len(parts) > 0 {
+					message = strings.Join(parts, "；")
+				}
 			}
 		}
 	}
-	if response.StatusCode >= 300 && response.StatusCode < 400 { message = "审核服务返回重定向，请直接填写最终 HTTPS 服务器地址" }
+	if response.StatusCode >= 300 && response.StatusCode < 400 {
+		message = "审核服务返回重定向，请直接填写最终 HTTPS 服务器地址"
+	}
 	return &APIError{Status: response.StatusCode, Message: message}
 }

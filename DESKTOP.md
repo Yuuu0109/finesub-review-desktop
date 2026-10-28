@@ -6,6 +6,8 @@
 
 支持 Windows 10 / 11 x64。下载正式 Release 的 `FineSub Review.exe` 后放在可写目录双击，不需要安装开发工具、FineSub 或 Python 服务。正式发布状态见 [Releases](https://github.com/Yuuu0109/finesub-review-desktop/releases)，测试状态见 [VALIDATION.md](VALIDATION.md)。
 
+0.5.0 当前已产出 CI 开发 EXE，并通过 [Windows 原生构建和首帧检查](https://github.com/Yuuu0109/finesub-review-desktop/actions/runs/40630500085)。本版签名发布构建、实际服务器业务和跨版本升级尚未验收，开发产物不应当作已完成正式交付验收的版本。
+
 默认审核服务器为 `https://49.234.185.63`。自定义地址必须是 HTTPS 来源地址，不能包含 `/api`、用户信息、查询参数或片段；本地开发允许 HTTP 回环地址。服务器根路径提供 `/api/*`，目前不支持子路径部署。
 
 访问口令进入普通成员身份；管理员登录后才显示管理操作。客户端向同一审核 API 发请求，保持 Cookie、CSRF 和服务器权限校验，拒绝自动跟随 HTTP 重定向。导入、裁决、发布和后台任务在云端完成。
@@ -29,6 +31,8 @@ go build -trimpath -ldflags "-H=windowsgui" -o "FineSub Review-dev.exe" .
 ```
 
 无需执行 `pnpm build`；旧前端嵌入脚本已经移除。程序使用 Go 原生界面，不查找 EXE 附近或当前目录的 `dist`。单独复制 EXE 到其他目录即可运行。开发构建没有 MyGO CLI 写入的更新源和公钥，不能作为应用内更新测试的旧版本。
+
+CI 还会运行 `--smoke-test`：使用临时客户端数据且不连接审核服务器，真实创建原生窗口并在首帧就绪后退出。提交 `2dd69ac8ec283f2ac130d2bcefaa3c9164707778` 已通过该检查、版本检查和 37 个顶层 Go 测试。中文文本注入的 UI 测试不覆盖真实输入法；实际键盘操作、候选窗、Markdown/Diff 视觉效果和完整业务仍需实机验收。配套网页的 [PR 测试与生产构建](https://github.com/Yuuu0109/finesub-review-desktop/actions/runs/40630505690) 已通过。
 
 签名发布：
 

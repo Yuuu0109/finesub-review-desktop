@@ -38,19 +38,24 @@ jobs:
         with:
           go-version: "1.27.3"
           cache-dependency-path: desktop/go.sum
-      - name: Normalize native source for review
+      - name: Check Go formatting and dependency lock
         working-directory: desktop
         shell: pwsh
         run: |
+          $sources = @(Get-ChildItem -Recurse -Filter *.go | ForEach-Object { $_.FullName })
+          $unformatted = @(& gofmt -l $sources)
+          if ($LASTEXITCODE -ne 0) { throw "gofmt failed" }
+          if ($unformatted.Count -gt 0) { throw "Run gofmt on: $($unformatted -join ', ')" }
           go mod tidy
-          gofmt -w .
-          python -c "import pathlib,json,zlib,base64; p=pathlib.Path('.'); files={str(f).replace(chr(92),'/'):f.read_text(encoding='utf-8') for f in p.rglob('*.go')}; files.update({n:(p/n).read_text(encoding='utf-8') for n in ['go.mod','go.sum']}); print('FORMATTED_SOURCE='+base64.b64encode(zlib.compress(json.dumps(files,ensure_ascii=False).encode('utf-8'))).decode())"
+          if ($LASTEXITCODE -ne 0) { throw "go mod tidy failed" }
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { throw "Commit the dependency lock changes from go mod tidy" }
       - name: Go tests
         working-directory: desktop
         run: go test -v ./...
       # A clean checkout builds without Vite, Node, copied pages or WebView2.
-      # This verifies compilation only; Windows UI and upgrade acceptance are
-      # separate checks recorded in VALIDATION.md.
+      # The smoke check below opens a real native window. Full interaction and
+      # upgrade acceptance remain separate checks recorded in VALIDATION.md.
       - name: Build the native executable
         working-directory: desktop
         run: go build -trimpath -ldflags "-H=windowsgui" -o "FineSub Review-dev.exe" .
@@ -94,11 +99,9 @@ jobs:
       # Node is only used for these release validation/staging utilities.
       # The desktop app and its Go build have no JavaScript runtime dependency.
       - uses: actions/setup-node@v4
-        if: env.SIGN_RELEASE == 'true'
         with:
           node-version: 22
       - name: Test release verification and staging
-        if: env.SIGN_RELEASE == 'true'
         run: node scripts/desktop_release.test.mjs
       - name: Verify signature, checksums and native executable
         if: env.SIGN_RELEASE == 'true'
