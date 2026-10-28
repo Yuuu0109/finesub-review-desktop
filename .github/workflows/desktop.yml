@@ -98,6 +98,44 @@ jobs:
         env:
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
         run: mygo build
+      - name: Verify the signed release executable starts
+        if: env.SIGN_RELEASE == 'true'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $expected = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $exe = Resolve-Path ".\build\windows-amd64\FineSub Review.exe"
+          $actual = (& $exe --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) {
+            throw "Release executable version '$actual' does not match '$expected'"
+          }
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            $process.Kill()
+            throw "Release executable did not draw its first native frame"
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Release native smoke test failed with exit code $($process.ExitCode)"
+          }
+      - name: Verify the update archive contains the distributed executable
+        if: env.SIGN_RELEASE == 'true'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $version = (Get-Content mygo.json -Raw | ConvertFrom-Json).version
+          $folder = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+          New-Item -ItemType Directory -Path $folder | Out-Null
+          try {
+            tar -xzf "build/windows-amd64/finesub-review-$version-windows-amd64.tar.gz" -C $folder
+            if ($LASTEXITCODE -ne 0) { throw "Cannot extract the update archive" }
+            $archived = @(Get-ChildItem -Path $folder -Recurse -File -Filter "FineSub Review.exe")
+            if ($archived.Count -ne 1) { throw "Update archive must contain exactly one application executable" }
+            $portableHash = (Get-FileHash "build/windows-amd64/FineSub Review.exe" -Algorithm SHA256).Hash
+            $archiveHash = (Get-FileHash $archived[0].FullName -Algorithm SHA256).Hash
+            if ($portableHash -ne $archiveHash) { throw "Update archive differs from the distributed executable" }
+          } finally {
+            Remove-Item -LiteralPath $folder -Recurse -Force
+          }
       # Node is only used for these release validation/staging utilities.
       # The desktop app and its Go build have no JavaScript runtime dependency.
       - uses: actions/setup-node@v4
@@ -105,12 +143,15 @@ jobs:
           node-version: 22
       - name: Test release verification and staging
         run: node scripts/desktop_release.test.mjs
-      - name: Verify signature, checksums and native executable
-        if: env.SIGN_RELEASE == 'true'
-        run: node scripts/verify_desktop.mjs
       - name: Stage the release artifacts
         if: env.SIGN_RELEASE == 'true'
         run: node scripts/package_desktop.mjs
+      - name: Verify signature, checksums and native executable
+        if: env.SIGN_RELEASE == 'true'
+        shell: pwsh
+        run: |
+          $version = (Get-Content desktop/mygo.json -Raw | ConvertFrom-Json).version
+          node scripts/verify_desktop.mjs "output/desktop-$version"
       - name: Upload release artifacts
         if: env.SIGN_RELEASE == 'true'
         uses: actions/upload-artifact@v4
