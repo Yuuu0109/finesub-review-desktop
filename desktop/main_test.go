@@ -309,6 +309,34 @@ func TestCheckUpdateFailureClearsPending(t *testing.T) {
 	}
 }
 
+// A check that finds nothing newer must return nil, not a zero UpdateInfo: the
+// page reads the answer as an object, and a zero struct is a truthy object in
+// JavaScript, so it would offer "新版本 " with an empty version number and a
+// download button instead of saying the app is up to date.
+func TestCheckUpdateReturnsNilWhenUpToDate(t *testing.T) {
+	resetUpdateState(t)
+	updateCacheDir = t.TempDir()
+	t.Cleanup(func() { updateCacheDir = "" })
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) { return nil, nil })
+
+	info, err := (shellService{}).CheckUpdate()
+	if err != nil {
+		t.Fatalf("CheckUpdate: %v", err)
+	}
+	if info != nil {
+		t.Fatalf("CheckUpdate returned %+v, want nil", info)
+	}
+
+	// The remembered "no update" answer must be nil as well.
+	cached, err := (shellService{}).CheckUpdateStartup()
+	if err != nil {
+		t.Fatalf("CheckUpdateStartup: %v", err)
+	}
+	if cached != nil {
+		t.Fatalf("CheckUpdateStartup returned %+v from the cache, want nil", cached)
+	}
+}
+
 // The three failures a user can meet need different advice, so they must not
 // collapse into one message. The samples are the shapes mygo's updater.go
 // produces for each; anything unrecognized keeps its original text.

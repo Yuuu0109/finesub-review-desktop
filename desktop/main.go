@@ -462,9 +462,11 @@ var networkFailureMarkers = []string{
 
 // CheckUpdate asks the update feed for a newer version, ignoring any cache.
 //
-// It returns a zero UpdateInfo with no error when the app is up to date, which
-// the page distinguishes from an error: "已是最新版本" is not a failure.
-func (shellService) CheckUpdate() (UpdateInfo, error) {
+// It returns nil with no error when the app is up to date, which the page
+// distinguishes from an error: "已是最新版本" is not a failure. Nil matters —
+// a zero UpdateInfo is a non-null object in JavaScript, and the page would then
+// show an update with an empty version number.
+func (shellService) CheckUpdate() (*UpdateInfo, error) {
 	updateMu.Lock()
 	defer updateMu.Unlock()
 	return checkLocked(time.Now())
@@ -478,25 +480,25 @@ func (shellService) CheckUpdate() (UpdateInfo, error) {
 // again before installing when nothing is pending. A cached failure is returned
 // as the same message, so a rate-limited launch does not ask the server again
 // until the hour is up — and the user still has "重新检查" to ask now.
-func (shellService) CheckUpdateStartup() (UpdateInfo, error) {
+func (shellService) CheckUpdateStartup() (*UpdateInfo, error) {
 	updateMu.Lock()
 	defer updateMu.Unlock()
 	now := time.Now()
 	if cache, ok := readUpdateCache(now); ok {
 		if cache.Error != "" {
-			return UpdateInfo{}, errors.New(cache.Error)
+			return nil, errors.New(cache.Error)
 		}
 		if cache.Version != "" {
 			// The page will show this; installing asks the server again.
-			return UpdateInfo{Version: cache.Version, Notes: cache.Notes, Prepared: false}, nil
+			return &UpdateInfo{Version: cache.Version, Notes: cache.Notes, Prepared: false}, nil
 		}
-		return UpdateInfo{}, nil
+		return nil, nil
 	}
 	return checkLocked(now)
 }
 
 // checkLocked performs a check and records it. Callers hold updateMu.
-func checkLocked(now time.Time) (UpdateInfo, error) {
+func checkLocked(now time.Time) (*UpdateInfo, error) {
 	// Ten seconds: a check that hangs must not hold the UI.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -508,13 +510,13 @@ func checkLocked(now time.Time) (UpdateInfo, error) {
 		if !errors.Is(described, errUpdatesDisabled) {
 			writeUpdateCache(UpdateInfo{}, described, now)
 		}
-		return UpdateInfo{}, described
+		return nil, described
 	}
 	installed = false
 	if found == nil {
 		pending = nil
 		writeUpdateCache(UpdateInfo{}, nil, now)
-		return UpdateInfo{}, nil
+		return nil, nil
 	}
 	// Install is called later by DownloadUpdate; the closure keeps the update
 	// mygo returned without this package depending on its unexported state.
@@ -525,7 +527,7 @@ func checkLocked(now time.Time) (UpdateInfo, error) {
 	}
 	info := UpdateInfo{Version: up.Version, Notes: up.Notes, Prepared: false}
 	writeUpdateCache(info, nil, now)
-	return info, nil
+	return &info, nil
 }
 
 // DownloadUpdate downloads the update CheckUpdate found, verifies its
@@ -553,7 +555,7 @@ func (shellService) DownloadUpdate(version string) error {
 			return err
 		}
 		if pending == nil || pending.version != version {
-			if info.Version == "" {
+			if info == nil || info.Version == "" {
 				return fmt.Errorf("%s 已不可用：更新源当前没有更新的版本，可能已撤回，请重新检查", version)
 			}
 			return fmt.Errorf("更新源提供的是 %s，不是 %s，请重新检查", info.Version, version)
