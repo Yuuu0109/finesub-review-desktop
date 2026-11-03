@@ -1991,13 +1991,29 @@ blockquote {
   color: var(--ink-4);
 }
 
-/* ---------------------------------------------------------- 发布中心 */
+/* 发布中心 */
 .release-card {
   display: flex;
   align-items: flex-start;
   gap: 20px;
   margin-bottom: 16px;
   padding: 24px;
+}
+/* 回退版本不是主线：灰罫 + 纸面底 + 标签，扫列表时和正向发布分开。
+   只靠一条细线对比不够，整块降一档纸色才看得出来。 */
+.release-card.rollback {
+  border-left: 3px solid var(--ink-4);
+  background: var(--surface-2);
+}
+.release-card.rollback .release-icon {
+  color: var(--ink-3);
+  background: var(--surface-1);
+}
+.release-card.rollback h2 {
+  color: var(--ink-2);
+}
+.rollback-tag {
+  color: var(--ink-3);
 }
 .release-icon {
   width: 44px;

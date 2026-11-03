@@ -161,7 +161,12 @@ onUnmounted(() => clearInterval(timer));
     <Icon name="download" :size="36" />
     <h3>还没有发布版本</h3>
   </div>
-  <article v-for="row in rows" :key="row.id" class="panel release-card">
+  <article
+    v-for="row in rows"
+    :key="row.id"
+    class="panel release-card"
+    :class="{ rollback: row.rollback_of }"
+  >
     <div class="release-icon">
       <Icon :name="row.rollback_of ? 'refresh' : 'book'" :size="24" />
     </div>
@@ -169,7 +174,8 @@ onUnmounted(() => clearInterval(timer));
       <div class="release-title">
         <h2>{{ row.name }}</h2>
         <span class="badge" :class="row.status">{{ labels[row.status] }}</span
-        ><span v-if="row.current" class="tag current">当前正式版本</span>
+        ><span v-if="row.current" class="tag current">当前正式版本</span
+        ><span v-if="row.rollback_of" class="tag rollback-tag">回退版本</span>
       </div>
       <p v-if="row.notes">{{ row.notes }}</p>
       <div class="release-meta">
