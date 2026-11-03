@@ -8,25 +8,29 @@
 .workflow-overview > button > svg { color: var(--ink-3); flex: 0 0 auto; }
 .workflow-overview > button > svg:last-child { margin-left: auto; }
 .workflow-overview > button:hover { background: var(--surface-2); }
-.workflow-overview > .current-step { background: var(--brand-50); box-shadow: inset 0 3px var(--brand-500); }
+/* 当前环节用朱色顶线标记，不铺底色——底色会让这四个格变成卡片。 */
+.workflow-overview > .current-step { background: none; box-shadow: inset 0 3px var(--brand-500); }
 .workflow-overview strong { display: block; font-family: var(--font-display); font-size: 30px; line-height: 1.2; margin-top: 10px; color: var(--ink-1); font-variant-numeric: tabular-nums; }
 .workflow-overview small { font-size: 12px; font-weight: 400; color: var(--ink-3); margin-left: 8px; }
 .queue-tabs { display: flex; align-items: center; gap: 6px; margin: 0 0 16px; flex-wrap: wrap; }
 .queue-tabs > button { display: flex; align-items: center; gap: 8px; background: transparent; border: 1px solid transparent; border-radius: var(--r-sm); padding: 9px 14px; }
-.queue-tabs > button.active { background: var(--brand-50); border-color: var(--brand-200); color: var(--brand-700); font-weight: 600; }
+.queue-tabs > button.active { background: none; border-color: var(--line-2); color: var(--brand-600); font-weight: 600; box-shadow: inset 0 -2px 0 var(--brand-500); }
 .queue-tabs > span { font-size: 12px; color: var(--ink-3); padding-left: 10px; }
 .queue-tabs > .queue-publish { margin-left: auto; color: var(--brand-600); }
 .review-layout .review-grid { grid-template-columns: minmax(0, 1fr) 350px; gap: 22px; }
 .review-layout .review-sidebar { display: flex; flex-direction: column; align-items: stretch; grid-column: auto; }
-.review-stage { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-top: 1px solid var(--line-1); color: var(--ink-3); font-size: 12px; flex-wrap: wrap; }
-.review-stage > span { display: inline-flex; align-items: center; gap: 7px; }
-.review-stage i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
+/* 校正刷：版本、状态、发布进度按排版注记排，等宽小字加罫线，不做进度条。 */
+.review-stage { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-top: 1px solid var(--line-1); border-bottom: 1px solid var(--line-1); color: var(--ink-3); font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; flex-wrap: wrap; margin-bottom: 18px; }
+.review-stage > span { display: inline-flex; align-items: center; gap: 6px; }
+.review-stage > svg { color: var(--line-2); }
+.review-stage i { display: inline-block; width: 6px; height: 6px; border-radius: 1px; background: var(--line-2); }
 .review-stage .pending, .review-stage .needs_changes { color: var(--amber-600); }
-.review-stage .approved { color: var(--green-700); }
+.review-stage .approved { color: var(--green-600); }
 .review-stage .rejected { color: var(--red-600); }
 .review-stage .approved i { background: var(--green-600); }
 .review-stage .pending i, .review-stage .needs_changes i { background: var(--amber-600); }
 .review-stage .rejected i { background: var(--red-600); }
+.review-stage > span:first-child i { background: var(--brand-500); }
 .review-stage .draft-indicator { margin-left: auto; color: var(--brand-600); }
 .review-metadata { margin: 0 0 18px; border-bottom: 1px solid var(--line-1); }
 .review-metadata > summary { cursor: pointer; color: var(--ink-3); padding: 5px 0 13px; font-size: 12px; }
@@ -40,7 +44,8 @@
 .diff-summary select { font-size: 12px; padding: 6px 10px; width: auto; }
 .diff-totals { display: flex; gap: 12px; margin-left: auto; font-family: var(--font-mono); }
 .red-text { color: var(--red-600); }
-.draft-banner, .import-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; background: var(--brand-50); color: var(--brand-700); font-size: 12px; }
+/* 提示条只留左侧朱色罫线，不铺整块底色。 */
+.draft-banner, .import-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; border-left: 2px solid var(--brand-500); }
 .import-next span { display: flex; align-items: center; gap: 8px; }
 .review-sidebar .decision-panel { border-top-width: 2px; }
 .review-sidebar .record-submit { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import mark from "../assets/icons/icon.png";
+// 图标是矢量书页标记：缩到 44px 仍然清楚，位图插图在这个尺寸会糊。
+import mark from "../assets/icons/source.svg";
 </script>
 
 <template>

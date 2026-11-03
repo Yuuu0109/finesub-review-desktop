@@ -6,6 +6,7 @@ import { probeServer, savedServer, selectServer, scopedDraftKey } from "./transp
 import { normalizeServer } from "./server";
 import DesktopUpdate from "./components/DesktopUpdate.vue";
 import WelcomePanel from "./components/WelcomePanel.vue";
+import WindowControls from "./components/WindowControls.vue";
 const address = ref(savedServer());
 const serverSetupKey = "finesub-review.server-setup";
 const connected = ref(false),
@@ -57,6 +58,7 @@ onMounted(async () => {
       </template>
       <DesktopUpdate />
     </div>
+    <WindowControls />
   </div>
   <div v-if="checking" class="boot" role="status">
     <span class="spinner"></span>正在连接知识库
