@@ -48,6 +48,8 @@
   --green-700: #2f523d;
   /* 侧栏比画布深一档的纸色：同一张纸上的分区，靠罫线分界，而不是一块墨色板。 */
   --sidebar-bg: #f2ece0;
+  /* 深色面板：登录卡与档案页头。这两个是墨色板配浅色字，和侧栏用途不同，不能共用 token。 */
+  --panel-deep: #201e1a;
 
   --amber-50: #fbf3e2;
   --amber-100: #f0dfba;
@@ -2445,7 +2447,7 @@ summary:focus-visible {
   flex-direction: column;
   justify-content: space-between;
   padding: 36px 40px 28px;
-  background: var(--sidebar-bg);
+  background: var(--panel-deep);
   color: #fbf7ee;
   min-width: 0;
 }
@@ -3060,7 +3062,7 @@ summary:focus-visible {
   gap: 32px;
   padding: 32px;
   border-radius: var(--r-xl);
-  background: var(--sidebar-bg);
+  background: var(--panel-deep);
   color: #fff;
   box-shadow: var(--shadow-md);
 }
