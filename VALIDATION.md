@@ -140,12 +140,14 @@ $env:PLAYWRIGHT_MODULE = '填写 Playwright 模块目录'
 $env:PLAYWRIGHT_CHANNEL = 'msedge'
 $env:PYTHONUTF8 = '1'
 node scripts/verify_workbench.mjs
-node scripts/verify_desktop_ui.mjs   # 正在按当前外壳重写，重写完成前不要当作已通过的验收
+node scripts/verify_desktop_ui.mjs   # 已按当前实现重写并执行通过（exit 0）
 # `mygo build` 之后执行（读 desktop/build；package_desktop.mjs 只是复制到 output/）：
 node scripts/verify_desktop.mjs
 ```
 
-**`scripts/verify_desktop_ui.mjs` 当前处于重写状态，其结果不可引用。** 该脚本原先模拟的是旧外壳的 IPC（`window.__TAURI_INTERNALS__`、`plugin:http|fetch`、`check_desktop_update` 等命令），并断言旧文案「下载更新」「稍后」「正在下载 50%」与写死的 `v0.3.0`；当前客户端调用的是 `window.mygo` 的 `shell.CheckUpdate`/`shell.DownloadUpdate`/`shell.ApplyUpdate`/`shell.Version`，文案与版本号也已不同。脚本与实际调用面是两套接口，直接运行必然全红，**它的通过与否不能说明桌面更新界面是否可用**。重写后需要 mock `window.mygo`、断言当前文案与版本，并实际执行过才可引用。上面表格中 2026-10-22 的「桌面更新界面」一行记录的是那次执行的结果，早于当前实现，不能作为现状。
+**`scripts/verify_desktop_ui.mjs` 已按当前实现重写并执行通过**（exit 0，`status: PASS`，版本 0.4.0、模拟提供 0.4.1）。它 mock 的是 `window.mygo` 的 `shell.CheckUpdate`/`shell.DownloadUpdate`/`shell.ApplyUpdate`/`shell.Version`，断言当前文案与版本号，覆盖六组检查：启动时后台检查与连接前后状态一致、下载中禁用与 Esc 不可关闭、安装失败提示「未安装任何内容，当前版本未改变」、限流与网络错误分流、安装完成提示关闭窗口不撤销安装、草稿未保存时阻止重启并在重启前记住路由。反向验证过：把「不会撤销」改成「将撤销」重跑，脚本以断言失败退出。
+
+**边界**：该脚本只验证界面状态机，`nativeReplacement: "NOT TESTED"` —— 它不验证 Go 侧签名校验与 exe 替换，那两部分在 `desktop/main_test.go` 与 `verify_desktop.mjs`。运行前需 `pnpm build`，并设置 `PLAYWRIGHT_MODULE`（本机可用路径 `.cache/verify-ui/node_modules/playwright-core`，须用绝对路径）与 `PLAYWRIGHT_EXECUTABLE`（指向本机已有的 chromium，例如 `chromium-1234\chrome-win64\chrome.exe`）。上面表格中 2026-10-22 的「桌面更新界面」一行记录的是那次执行的结果，早于当前实现，不能作为现状。
 
 0.3.0 的审核队列、对比和候选检查需要服务端 API 与 worker 同步更新。仅更新 EXE 不会更新云端服务。普通成员仍只提交版本绑定意见，管理员独立裁决；原生更新和公开 Release 验收不在上述浏览器结果之内。
 
