@@ -106,14 +106,7 @@ func main() {
 	}
 
 	mygo.App.WhenReady(func() {
-		window := mygo.NewWindow(mygo.WindowOptions{
-			Title:     "FineSub 知识库审核",
-			URL:       "/",
-			Width:     1280,
-			Height:    860,
-			MinWidth:  900,
-			MinHeight: 640,
-		})
+		window := mygo.NewWindow(windowOptions())
 		// The page is an app, not a browser: a navigation away from the app's
 		// own pages is refused. Links to the outside are opened by the system
 		// browser from main.ts, which cancels the click before it becomes a
@@ -127,6 +120,31 @@ func main() {
 
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// windowOptions is the window the app opens in.
+//
+// The page draws the title bar, so the window keeps no native caption, and
+// TitleBarStyle with HideWindowButtons is what removes it: a frameless window
+// loses its top resizing edge on Windows, while a hidden title bar keeps the
+// shadow, the rounded corners and all four edges, and hides only the system
+// buttons. The title still reaches the taskbar. The page then drives minimize,
+// maximize, restore and close itself through window.mygo.window, which MyGo
+// registers as the mygo:window service and mygo-runtime exposes as
+// currentWindow; this package binds nothing for it.
+func windowOptions() mygo.WindowOptions {
+	return mygo.WindowOptions{
+		Title:     "FineSub 知识库审核",
+		URL:       "/",
+		Width:     1280,
+		Height:    860,
+		MinWidth:  900,
+		MinHeight: 640,
+		// A page that draws its own title bar needs to drag the window, and
+		// this style leaves it no native area to drag by.
+		TitleBarStyle:     mygo.TitleBarHidden,
+		HideWindowButtons: true,
 	}
 }
 

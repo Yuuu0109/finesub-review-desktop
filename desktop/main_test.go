@@ -105,6 +105,33 @@ func TestOpenExternalRefusesNonWebSchemes(t *testing.T) {
 	}
 }
 
+// The window must hide the native caption but keep everything that depends on
+// it: the shadow, the rounded corners and the four resizing edges. A frameless
+// window would get the caption gone at the price of its top edge on Windows, so
+// the two options below are what the page's own title bar relies on, and a
+// change to either breaks dragging or resizing without any test noticing.
+func TestWindowIsFramelessButKeepsItsEdges(t *testing.T) {
+	opts := windowOptions()
+
+	if opts.Frameless {
+		t.Error("the window is frameless, which drops its top resizing edge on Windows")
+	}
+	if opts.TitleBarStyle != mygo.TitleBarHidden {
+		t.Fatalf("TitleBarStyle = %q, want %q", opts.TitleBarStyle, mygo.TitleBarHidden)
+	}
+	if !opts.HideWindowButtons {
+		t.Error("the native window buttons are shown, but the page draws its own")
+	}
+	// The taskbar and the window menu still need a title.
+	if opts.Title == "" {
+		t.Error("the window has no title, so the taskbar shows nothing")
+	}
+	// The page fills the window, so the page must keep the resize limits.
+	if opts.MinWidth <= 0 || opts.MinHeight <= 0 {
+		t.Errorf("MinWidth/MinHeight = %d/%d, want both above zero", opts.MinWidth, opts.MinHeight)
+	}
+}
+
 // The frontend must be served with the app's policy, and that policy must
 // still let the app's own bundle and styles through.
 func TestFrontendServesSecurityHeaders(t *testing.T) {
