@@ -46,7 +46,8 @@
   --green-300: #9dbba6;
   --green-600: #3f6b4f;
   --green-700: #2f523d;
-  --sidebar-bg: #201e1a;
+  /* 侧栏比画布深一档的纸色：同一张纸上的分区，靠罫线分界，而不是一块墨色板。 */
+  --sidebar-bg: #f2ece0;
 
   --amber-50: #fbf3e2;
   --amber-100: #f0dfba;
@@ -618,7 +619,7 @@ form > label {
   inset: var(--app-top, 0px) auto 0 0;
   width: var(--sidebar-w);
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--sidebar-bg);
+  border-right: 1px solid var(--line-1);
   padding: 28px 14px 0;
   display: flex;
   flex-direction: column;
@@ -757,8 +758,8 @@ form > label {
   position: sticky;
   top: var(--app-top, 0px);
   height: var(--topbar-h);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
+  /* 纸白而非纯白：纯白在暖米画布上是一条冷色横条，整页会被它切开。 */
+  background: var(--surface-1);
   border-bottom: 1px solid var(--line-1);
   padding: 0 32px;
   display: flex;
@@ -2256,19 +2257,19 @@ blockquote {
   right: 10px;
 }
 .sidebar .brand {
-  color: #fbf7ee;
+  color: var(--ink-1);
   font-size: 22px;
 }
 .sidebar .brand small {
-  color: #a8a196;
+  color: var(--ink-4);
   font-size: 10px;
   letter-spacing: 0.06em;
 }
 .sidebar .workspace-label {
-  color: #9d968a;
+  color: var(--ink-4);
   margin: 30px 10px 14px;
   padding-top: 20px;
-  border-top: 1px solid #35322c;
+  border-top: 1px solid var(--line-1);
   font-size: 11px;
 }
 .sidebar nav {
@@ -2276,48 +2277,48 @@ blockquote {
 }
 .sidebar nav button,
 .sidebar .sidebar-action {
-  color: #b5ada1;
+  color: var(--ink-3);
   min-height: 43px;
   padding: 11px 14px;
   font-size: 13px;
 }
 .sidebar nav button:hover,
 .sidebar .sidebar-action:hover {
-  background: #2c2925;
-  color: #fbf7ee;
+  background: var(--surface-3);
+  color: var(--ink-1);
 }
-/* 选中项：朱色左边条加纸白文字，是这一栏唯一的强调。 */
+/* 选中项像纸上被朱笔框出的一栏：纸白底浮起，左侧一道朱线。 */
 .sidebar nav button.active,
 .sidebar .sidebar-action.active {
-  background: #2c2925;
-  color: #fbf7ee;
+  background: var(--surface-1);
+  color: var(--ink-1);
   box-shadow: inset 2px 0 0 var(--brand-500);
 }
 .sidebar nav button.active svg,
 .sidebar .sidebar-action.active svg {
-  color: var(--brand-400);
+  color: var(--brand-500);
 }
 .sidebar .user-card {
-  border-color: #35322c;
+  border-color: var(--line-1);
   padding: 20px 4px;
 }
 .sidebar .user-identity strong {
-  color: #fbf7ee;
+  color: var(--ink-1);
 }
 .sidebar .user-identity small {
-  color: #a8a196;
+  color: var(--ink-4);
 }
 .sidebar .avatar {
-  background: #35322c;
-  color: #fbf7ee;
+  background: var(--surface-3);
+  color: var(--ink-1);
   border-radius: var(--r-sm);
 }
 .sidebar .icon-button {
-  color: #a8a196;
+  color: var(--ink-4);
 }
 .sidebar .icon-button:hover {
-  color: #fbf7ee;
-  background: #35322c;
+  color: var(--ink-1);
+  background: var(--surface-3);
 }
 .sidebar .sidebar-action {
   margin-bottom: 14px;
