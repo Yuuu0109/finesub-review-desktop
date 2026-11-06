@@ -116,3 +116,17 @@ gh release edit desktop-v0.4.0 --draft=false --latest
 本机验证了同次构建的原生程序启动、真实 Tauri 版本 IPC、访问公开 GitHub 更新源并显示“已是最新版本”。安装包签名和 SHA-256 校验通过，修改一个字节后签名验证失败；匿名下载的清单与安装包和本机产物一致。前端测试 4 项、后端回归 10 项通过，更新提示、确认下载、进度、错误重试及后台检查中打开窗口通过浏览器模拟 IPC 验证。尚未执行真实跨版本覆盖安装、卸载或云端业务验收。
 
 实现依据：[MyGo 0.7.1](https://github.com/egoist/mygo)（`mygo build`、updater、fetch 插件与 `mygo://` 自定义协议）、[Ed25519](https://pkg.go.dev/crypto/ed25519)。
+
+
+
+## 0.4.1 发布与旧版升级
+
+工作流先测试前端、浏览器交互和 Go，再构建并校验更新归档。普通 push/PR 只构建开发程序，不需要签名密钥。正式版本可推送与三个版本字段一致的 `desktop-v0.4.1` 标签，或在 `Windows desktop build` 手动选择 `publish`。发布任务先创建 draft、上传全部产物，最后公开 Release；已存在的 Release 不会被覆盖。若上传中断，检查并删除未公开的 draft 后重跑发布任务。
+
+仓库必须已配置 `MYGO_UPDATER_PRIVATE_KEY`，与 `desktop/mygo.json` 中现有公钥配对。不得重新生成公钥来解决签名失败，否则已安装旧版不能信任新包。私钥缺失时工作流会在构建前报错，密钥值不会打印。发布内容包含 `update-windows-amd64.json`、其引用的签名 tar.gz、EXE 和校验文件。版本分别位于 `desktop/mygo.json`、`desktop/main.go`、`frontend/package.json`；`scripts/release_config.mjs` 在构建前校验三者、标签和更新记录。
+
+已有按相同仓库、`desktop-v` 前缀和公钥构建的 0.4.0 发布版，可在新 Release 公开后点击“检查更新 → 下载并安装 → 立即重启”。启动缓存可能延迟自动发现 24 小时，手动检查绕过缓存。下载显示真实字节数；增量回退全量时进度重新开始。安装已原位完成，稍后重启仅延迟切换进程，不撤销安装。重启前仍检查审核草稿并保存当前路由。
+
+未嵌入更新源/公钥的 `go build` 开发程序，以及采用其他更新协议或公钥的更早版本，无法通过本次代码改动获得升级能力；需要先手动安装支持该更新源的版本。本次改动本身不创建标签或发布生产安装包。Windows 原位替换仍需用真实旧版签名程序进行最终验收。
+
+界面参考：mygo 的 [frameless 示例](https://github.com/egoist/mygo/blob/v0.7.1/examples/frameless/main.go)、[更新 API](https://github.com/egoist/mygo/blob/v0.7.1/docs/updates.md) 与 [Godiff](https://github.com/egoist/godiff) 的紧凑导航、阅读分区及键盘入口。柑橘橙、奶油白和暖灰是围绕小日向美香常用 🍊 意象设计的应用色板，不是宣称官方公布的十六进制标准色。

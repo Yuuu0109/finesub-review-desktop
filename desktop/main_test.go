@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -259,7 +260,7 @@ func TestDownloadUpdatePropagatesInstallFailure(t *testing.T) {
 	resetUpdateState(t)
 
 	refused := errors.New("mygo: installing the update: the update is not signed with the app's key")
-	pending = &pendingUpdate{version: "0.3.1", install: func(context.Context) error { return refused }}
+	pending = &pendingUpdate{version: "0.3.1", install: func(context.Context, func(int64, int64)) error { return refused }}
 
 	err := (shellService{}).DownloadUpdate("0.3.1")
 	if !errors.Is(err, refused) {
@@ -282,7 +283,7 @@ func TestDownloadUpdateOnlyInstallsTheCheckedVersion(t *testing.T) {
 	resetUpdateState(t)
 
 	calls := 0
-	pending = &pendingUpdate{version: "0.3.1", install: func(context.Context) error {
+	pending = &pendingUpdate{version: "0.3.1", install: func(context.Context, func(int64, int64)) error {
 		calls++
 		return nil
 	}}
@@ -663,7 +664,7 @@ func TestDescribeInstallError(t *testing.T) {
 func TestRefusedInstallIsNotReportedAsACheckFailure(t *testing.T) {
 	resetUpdateState(t)
 	refused := errors.New("mygo: installing the update: the update is not signed with the app's key")
-	pending = &pendingUpdate{version: "0.4.1", install: func(context.Context) error { return refused }}
+	pending = &pendingUpdate{version: "0.4.1", install: func(context.Context, func(int64, int64)) error { return refused }}
 
 	err := (shellService{}).DownloadUpdate("0.4.1")
 	if err == nil {
@@ -745,4 +746,67 @@ func TestAllowedNavigation(t *testing.T) {
 			t.Errorf("allowedNavigation(%q) = true, want false", url)
 		}
 	}
+}
+
+
+func TestUpgradeInvalidatesPreviousBuildCache(t *testing.T) {
+	resetUpdateState(t)
+	updateCacheDir = t.TempDir()
+	t.Cleanup(func() { updateCacheDir = "" })
+	now := time.Now()
+	writeUpdateCache(UpdateInfo{Version: version}, nil, now)
+	path, _ := updateCachePath()
+	data, err := os.ReadFile(path)
+	if err != nil { t.Fatal(err) }
+	var cached updateCheckCache
+	if err := json.Unmarshal(data, &cached); err != nil { t.Fatal(err) }
+	cached.AppVersion = "0.4.0"
+	data, _ = json.Marshal(cached)
+	if err := os.WriteFile(path, data, 0o600); err != nil { t.Fatal(err) }
+	calls := 0
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) { calls++; return nil, nil })
+	info, err := (shellService{}).CheckUpdateStartup()
+	if err != nil || info != nil || calls != 1 {
+		t.Fatalf("upgrade reused old cache: info=%+v err=%v calls=%d", info, err, calls)
+	}
+}
+
+func TestFailedFreshCheckDropsPreviousInstallHandle(t *testing.T) {
+	resetUpdateState(t)
+	pending = &pendingUpdate{version: "0.5.0", install: func(context.Context, func(int64, int64)) error {
+		t.Fatal("stale install handle called")
+		return nil
+	}}
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) { return nil, errors.New("offline") })
+	if _, err := (shellService{}).CheckUpdate(); err == nil { t.Fatal("expected failed check") }
+	if pending != nil { t.Fatal("stale handle survived a failed check") }
+}
+
+func TestInstalledUpdateSurvivesChecksAndDuplicateDownload(t *testing.T) {
+	resetUpdateState(t)
+	updateCacheDir = t.TempDir()
+	t.Cleanup(func() { updateCacheDir = "" })
+	writeUpdateCache(UpdateInfo{Version: "0.5.0"}, nil, time.Now())
+	installs := 0
+	pending = &pendingUpdate{version: "0.5.0", notes: "notes", install: func(context.Context, func(int64, int64)) error {
+		installs++
+		return nil
+	}}
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) {
+		t.Fatal("checking an installed update must not access the feed")
+		return nil, nil
+	})
+	shell := shellService{}
+	if err := shell.DownloadUpdate("0.5.0"); err != nil { t.Fatal(err) }
+	path, _ := updateCachePath()
+	if _, err := os.Stat(path); !os.IsNotExist(err) { t.Fatalf("cache not removed: %v", err) }
+	for _, check := range []func() (*UpdateInfo, error){shell.CheckUpdate, shell.CheckUpdateStartup} {
+		info, err := check()
+		if err != nil || info == nil || !info.Prepared || info.Version != "0.5.0" || info.Notes != "notes" {
+			t.Fatalf("lost installed update: %+v, %v", info, err)
+		}
+	}
+	if err := shell.DownloadUpdate("0.5.0"); err != nil { t.Fatal(err) }
+	if err := shell.DownloadUpdate("0.6.0"); err == nil { t.Fatal("accepted a second version before restart") }
+	if installs != 1 || !installed { t.Fatalf("installs=%d installed=%v", installs, installed) }
 }

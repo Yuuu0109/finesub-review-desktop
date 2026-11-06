@@ -35,7 +35,7 @@ const (
 	// the binary for the updater, and this one is what the UI reads. Keep the
 	// CHANGELOG section in step with it too — `mygo build` takes the release
 	// notes from there, and package_desktop.mjs fails when it is missing.
-	version = "0.4.0"
+	version = "0.4.1"
 )
 
 //go:embed all:ui
@@ -260,7 +260,8 @@ var errUpdatesDisabled = errors.New("当前为开发构建，应用内更新只�
 // as success.
 type pendingUpdate struct {
 	version string
-	install func(ctx context.Context) error
+	notes string
+	install func(ctx context.Context, progress func(int64, int64)) error
 }
 
 // updateMu serializes the update calls: a check and an install share the state
@@ -280,6 +281,18 @@ type UpdateInfo struct {
 	Version  string `json:"version"`
 	Notes    string `json:"notes"`
 	Prepared bool   `json:"prepared"`
+}
+
+type UpdateProgressInfo struct {
+	Downloaded int64 `json:"downloaded"`
+	Total int64 `json:"total"`
+}
+
+var UpdateProgress = mygo.NewEvent[UpdateProgressInfo]("desktop-update-progress")
+
+// Call only while holding updateMu. A re-check cannot undo an installed update.
+func preparedUpdate() *UpdateInfo {
+	return &UpdateInfo{Version: pending.version, Notes: pending.notes, Prepared: true}
 }
 
 // startupCheckInterval is how long a successful check is reused at launch.
@@ -308,6 +321,7 @@ var (
 // exactly the case that motivated the cache — a rate-limited launch — asking
 // again at every start.
 type updateCheckCache struct {
+	AppVersion string `json:"appVersion"`
 	CheckedAt string `json:"checkedAt"`
 	ExpiresAt string `json:"expiresAt"`
 	Version   string `json:"version"`
@@ -354,6 +368,10 @@ func readUpdateCache(now time.Time) (updateCheckCache, bool) {
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return updateCheckCache{}, false
 	}
+	// Never reuse a pre-upgrade answer in the new executable.
+	if cache.AppVersion != version {
+		return updateCheckCache{}, false
+	}
 	checked, err := time.Parse(time.RFC3339, cache.CheckedAt)
 	if err != nil {
 		return updateCheckCache{}, false
@@ -378,6 +396,7 @@ func writeUpdateCache(info UpdateInfo, checkErr error, now time.Time) {
 	}
 	lifetime := startupCheckInterval
 	entry := updateCheckCache{
+		AppVersion: version,
 		CheckedAt: now.UTC().Format(time.RFC3339),
 		Version:   info.Version,
 		Notes:     info.Notes,
@@ -502,6 +521,9 @@ func (shellService) CheckUpdateStartup() (*UpdateInfo, error) {
 	updateMu.Lock()
 	defer updateMu.Unlock()
 	now := time.Now()
+	if installed && pending != nil {
+		return preparedUpdate(), nil
+	}
 	if cache, ok := readUpdateCache(now); ok {
 		if cache.Error != "" {
 			return nil, errors.New(cache.Error)
@@ -517,6 +539,12 @@ func (shellService) CheckUpdateStartup() (*UpdateInfo, error) {
 
 // checkLocked performs a check and records it. Callers hold updateMu.
 func checkLocked(now time.Time) (*UpdateInfo, error) {
+	if installed && pending != nil {
+		return preparedUpdate(), nil
+	}
+	// A failed fresh check must invalidate any older install handle.
+	pending = nil
+	installed = false
 	// Ten seconds: a check that hangs must not hold the UI.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -541,7 +569,8 @@ func checkLocked(now time.Time) (*UpdateInfo, error) {
 	up := found
 	pending = &pendingUpdate{
 		version: up.Version,
-		install: func(ctx context.Context) error { return up.Install(ctx, nil) },
+		notes: up.Notes,
+		install: up.Install,
 	}
 	info := UpdateInfo{Version: up.Version, Notes: up.Notes, Prepared: false}
 	writeUpdateCache(info, nil, now)
@@ -563,6 +592,10 @@ func checkLocked(now time.Time) (*UpdateInfo, error) {
 func (shellService) DownloadUpdate(version string) error {
 	updateMu.Lock()
 	defer updateMu.Unlock()
+	if installed {
+		if pending != nil && pending.version == version { return nil }
+		return errors.New("更新已安装，请先重启")
+	}
 	if pending == nil || pending.version != version {
 		// The version can come from a cached startup check, whose update object
 		// mygo does not let us keep across launches. Ask again before installing:
@@ -587,12 +620,15 @@ func (shellService) DownloadUpdate(version string) error {
 	// forged, tampered or wrong-sized download returns here with the files
 	// untouched. The error must reach the page — a silent failure would tell the
 	// user the update is ready when nothing was installed.
-	if err := pending.install(ctx); err != nil {
+	if err := pending.install(ctx, func(downloaded, total int64) {
+		UpdateProgress.Broadcast(UpdateProgressInfo{Downloaded: downloaded, Total: total})
+	}); err != nil {
 		pending = nil
 		installed = false
 		return describeInstallError(err)
 	}
 	installed = true
+	if path, err := updateCachePath(); err == nil { _ = os.Remove(path) }
 	return nil
 }
 
@@ -675,3 +711,4 @@ func frontendDir(override string) string {
 	}
 	return ""
 }
+

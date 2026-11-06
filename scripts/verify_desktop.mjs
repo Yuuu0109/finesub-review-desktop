@@ -39,6 +39,9 @@ if (!allowPrevious) {
   );
 }
 
+// 2. The archive must come from this exact release, not merely share a basename.
+assert.equal(manifest.url, `https://github.com/${config.updates.github}/releases/download/${config.updates.tagPrefix}${manifest.version}/finesub-review-${manifest.version}-windows-amd64.tar.gz`);
+
 // 2. The archive the manifest names.
 const archiveName = `finesub-review-${manifest.version}-windows-amd64.tar.gz`;
 assert.equal(
@@ -129,3 +132,4 @@ console.log(`  archive   ${archiveName} (${(archive.length / 1048576).toFixed(1)
 console.log(`  portable  ${exeName} (${(exe.length / 1048576).toFixed(1)} MiB, Windows x64 PE, frontend embedded)`);
 console.log(`  checksums ${listed.size} entries in SHA256SUMS`);
 console.log(`  files     ${artifacts.join(", ")}`);
+

@@ -8,6 +8,7 @@ import DesktopUpdate from "./components/DesktopUpdate.vue";
 import WelcomePanel from "./components/WelcomePanel.vue";
 import WindowControls from "./components/WindowControls.vue";
 const address = ref(savedServer());
+const updateBusy = ref(false);
 const serverSetupKey = "finesub-review.server-setup";
 const connected = ref(false),
   checking = ref(true),
@@ -51,14 +52,15 @@ onMounted(async () => {
 </script>
 <template>
   <div class="desktop-bar">
+    <span class="desktop-caption">FineSub <span>Review</span></span>
     <div class="desktop-bar-actions">
       <template v-if="connected">
         <span class="server-status"><span></span>已连接</span>
-        <button class="server-switch" type="button" :title="address" @click="switchServer"><Icon name="settings" :size="14" />更换服务器</button>
+        <button class="server-switch" type="button" :title="address" :disabled="updateBusy" @click="switchServer"><Icon name="settings" :size="14" />更换服务器</button>
       </template>
-      <DesktopUpdate />
+      <DesktopUpdate @busy="updateBusy = $event" />
     </div>
-    <WindowControls />
+    <WindowControls :close-disabled="updateBusy" />
   </div>
   <div v-if="checking" class="boot" role="status">
     <span class="spinner"></span>正在连接知识库
@@ -96,10 +98,9 @@ onMounted(async () => {
             </button>
           </form>
         </div>
-        <div class="entry-form-footer">
-          <span>桌面客户端 · 免安装运行</span>
-        </div>
+
       </section>
     </div>
   </main>
 </template>
+
