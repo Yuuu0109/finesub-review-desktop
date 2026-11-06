@@ -117,7 +117,9 @@ jobs:
         if: always()
         with:
           name: desktop-ui-evidence
-          path: test-results/desktop-ui-*/
+          path: |
+            test-results/desktop-ui-*/
+            frontend/dist/
           if-no-files-found: ignore
   publish:
     needs: windows

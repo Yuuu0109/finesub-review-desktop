@@ -301,7 +301,10 @@ try {
   await page.getByRole('button', { name: '木漏れ日', exact: true }).waitFor();
   for (const [width, height] of [[1280, 860], [900, 640], [390, 844]]) {
     await page.setViewportSize({ width, height });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `overflow at ${width}`);
+    const overflow = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll('body *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1)
+        .map(el => ({ tag: el.tagName, className: String(el.className), right: el.getBoundingClientRect().right })).slice(0, 25) }));
+    assert.ok(overflow.scrollWidth <= width, `overflow at ${width}: ${JSON.stringify(overflow)}`);
     await page.screenshot({ path: join(evidence, `entries-${width}.png`), fullPage: true });
   }
   checks.push('Ctrl+K聚焦、提交搜索、1280/900/390布局无页面横向溢出');

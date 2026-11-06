@@ -152,3 +152,7 @@ thead th { background: var(--surface-2); color: var(--ink-3); font-size: 11px; f
   .desktop-bar-actions { margin-right: auto; }
   .desktop-bar .desktop-update-button { gap: 6px; }
 }
+
+/* Keep table labels readable and contain absolute accessibility text in its scrollport. */
+.table-scroll { position: relative; min-width: 0; max-width: 100%; }
+.table-scroll table { min-width: 760px; }
