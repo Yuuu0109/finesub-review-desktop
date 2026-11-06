@@ -260,7 +260,7 @@ var errUpdatesDisabled = errors.New("当前为开发构建，应用内更新只�
 // as success.
 type pendingUpdate struct {
 	version string
-	notes string
+	notes   string
 	install func(ctx context.Context, progress func(int64, int64)) error
 }
 
@@ -285,7 +285,7 @@ type UpdateInfo struct {
 
 type UpdateProgressInfo struct {
 	Downloaded int64 `json:"downloaded"`
-	Total int64 `json:"total"`
+	Total      int64 `json:"total"`
 }
 
 var UpdateProgress = mygo.NewEvent[UpdateProgressInfo]("desktop-update-progress")
@@ -322,10 +322,10 @@ var (
 // again at every start.
 type updateCheckCache struct {
 	AppVersion string `json:"appVersion"`
-	CheckedAt string `json:"checkedAt"`
-	ExpiresAt string `json:"expiresAt"`
-	Version   string `json:"version"`
-	Notes     string `json:"notes"`
+	CheckedAt  string `json:"checkedAt"`
+	ExpiresAt  string `json:"expiresAt"`
+	Version    string `json:"version"`
+	Notes      string `json:"notes"`
 	// Error holds the already-localized message of a failed check.
 	Error string `json:"error,omitempty"`
 }
@@ -397,9 +397,9 @@ func writeUpdateCache(info UpdateInfo, checkErr error, now time.Time) {
 	lifetime := startupCheckInterval
 	entry := updateCheckCache{
 		AppVersion: version,
-		CheckedAt: now.UTC().Format(time.RFC3339),
-		Version:   info.Version,
-		Notes:     info.Notes,
+		CheckedAt:  now.UTC().Format(time.RFC3339),
+		Version:    info.Version,
+		Notes:      info.Notes,
 	}
 	if checkErr != nil {
 		entry.Error = checkErr.Error()
@@ -569,7 +569,7 @@ func checkLocked(now time.Time) (*UpdateInfo, error) {
 	up := found
 	pending = &pendingUpdate{
 		version: up.Version,
-		notes: up.Notes,
+		notes:   up.Notes,
 		install: up.Install,
 	}
 	info := UpdateInfo{Version: up.Version, Notes: up.Notes, Prepared: false}
@@ -593,7 +593,9 @@ func (shellService) DownloadUpdate(version string) error {
 	updateMu.Lock()
 	defer updateMu.Unlock()
 	if installed {
-		if pending != nil && pending.version == version { return nil }
+		if pending != nil && pending.version == version {
+			return nil
+		}
 		return errors.New("更新已安装，请先重启")
 	}
 	if pending == nil || pending.version != version {
@@ -628,7 +630,9 @@ func (shellService) DownloadUpdate(version string) error {
 		return describeInstallError(err)
 	}
 	installed = true
-	if path, err := updateCachePath(); err == nil { _ = os.Remove(path) }
+	if path, err := updateCachePath(); err == nil {
+		_ = os.Remove(path)
+	}
 	return nil
 }
 

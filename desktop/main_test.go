@@ -757,14 +757,23 @@ func TestUpgradeInvalidatesPreviousBuildCache(t *testing.T) {
 	writeUpdateCache(UpdateInfo{Version: version}, nil, now)
 	path, _ := updateCachePath()
 	data, err := os.ReadFile(path)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	var cached updateCheckCache
-	if err := json.Unmarshal(data, &cached); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(data, &cached); err != nil {
+		t.Fatal(err)
+	}
 	cached.AppVersion = "0.4.0"
 	data, _ = json.Marshal(cached)
-	if err := os.WriteFile(path, data, 0o600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	calls := 0
-	useFakeChecker(t, func(context.Context) (*mygo.Update, error) { calls++; return nil, nil })
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) {
+		calls++
+		return nil, nil
+	})
 	info, err := (shellService{}).CheckUpdateStartup()
 	if err != nil || info != nil || calls != 1 {
 		t.Fatalf("upgrade reused old cache: info=%+v err=%v calls=%d", info, err, calls)
@@ -777,9 +786,15 @@ func TestFailedFreshCheckDropsPreviousInstallHandle(t *testing.T) {
 		t.Fatal("stale install handle called")
 		return nil
 	}}
-	useFakeChecker(t, func(context.Context) (*mygo.Update, error) { return nil, errors.New("offline") })
-	if _, err := (shellService{}).CheckUpdate(); err == nil { t.Fatal("expected failed check") }
-	if pending != nil { t.Fatal("stale handle survived a failed check") }
+	useFakeChecker(t, func(context.Context) (*mygo.Update, error) {
+		return nil, errors.New("offline")
+	})
+	if _, err := (shellService{}).CheckUpdate(); err == nil {
+		t.Fatal("expected failed check")
+	}
+	if pending != nil {
+		t.Fatal("stale handle survived a failed check")
+	}
 }
 
 func TestInstalledUpdateSurvivesChecksAndDuplicateDownload(t *testing.T) {
@@ -797,16 +812,26 @@ func TestInstalledUpdateSurvivesChecksAndDuplicateDownload(t *testing.T) {
 		return nil, nil
 	})
 	shell := shellService{}
-	if err := shell.DownloadUpdate("0.5.0"); err != nil { t.Fatal(err) }
+	if err := shell.DownloadUpdate("0.5.0"); err != nil {
+		t.Fatal(err)
+	}
 	path, _ := updateCachePath()
-	if _, err := os.Stat(path); !os.IsNotExist(err) { t.Fatalf("cache not removed: %v", err) }
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("cache not removed: %v", err)
+	}
 	for _, check := range []func() (*UpdateInfo, error){shell.CheckUpdate, shell.CheckUpdateStartup} {
 		info, err := check()
 		if err != nil || info == nil || !info.Prepared || info.Version != "0.5.0" || info.Notes != "notes" {
 			t.Fatalf("lost installed update: %+v, %v", info, err)
 		}
 	}
-	if err := shell.DownloadUpdate("0.5.0"); err != nil { t.Fatal(err) }
-	if err := shell.DownloadUpdate("0.6.0"); err == nil { t.Fatal("accepted a second version before restart") }
-	if installs != 1 || !installed { t.Fatalf("installs=%d installed=%v", installs, installed) }
+	if err := shell.DownloadUpdate("0.5.0"); err != nil {
+		t.Fatal(err)
+	}
+	if err := shell.DownloadUpdate("0.6.0"); err == nil {
+		t.Fatal("accepted a second version before restart")
+	}
+	if installs != 1 || !installed {
+		t.Fatalf("installs=%d installed=%v", installs, installed)
+	}
 }

@@ -55,6 +55,7 @@ jobs:
       - name: Validate release versions and tag
         id: metadata
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           node --test scripts/release_config.test.mjs
           node scripts/release_config.mjs
       - name: Check release signing key
@@ -70,12 +71,14 @@ jobs:
       - name: Frontend install and tests
         working-directory: frontend
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           pnpm install --frozen-lockfile
           pnpm test:desktop
           pnpm build
       - name: Browser interaction checks
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           npm install --prefix "$env:RUNNER_TEMP/ui-check" --no-package-lock playwright@1.58.2
           node "$env:RUNNER_TEMP/ui-check/node_modules/playwright/cli.js" install chromium
           $env:PLAYWRIGHT_MODULE = "$env:RUNNER_TEMP/ui-check/node_modules/playwright"

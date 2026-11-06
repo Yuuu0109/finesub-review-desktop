@@ -301,6 +301,10 @@ try {
   await page.getByRole('button', { name: '木漏れ日', exact: true }).waitFor();
   for (const [width, height] of [[1280, 860], [900, 640], [390, 844]]) {
     await page.setViewportSize({ width, height });
+    if (width >= 900) {
+      await page.keyboard.press('Control+k');
+      assert.equal(await page.getByRole('textbox', { name: '搜索知识库', exact: true }).evaluate(el => el === document.activeElement), true);
+    }
     const overflow = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
       elements: [...document.querySelectorAll('body *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1)
         .map(el => ({ tag: el.tagName, className: String(el.className), right: el.getBoundingClientRect().right })).slice(0, 25) }));

@@ -1,37 +1,4 @@
 /* Shared desktop surfaces. The orange palette is inspired by Mika's citrus motif. */
-:root {
-  --ink-1: #2c2824;
-  --ink-2: #514a43;
-  --ink-3: #756a60;
-  --ink-4: #807467;
-  --canvas: #f6f4f0;
-  --surface-1: #fffefa;
-  --surface-2: #f9f7f3;
-  --surface-3: #eee9e1;
-  --line-1: #e7e1d8;
-  --line-2: #d5cabc;
-  --sidebar-bg: #f0ece5;
-  --panel-deep: #302a25;
-  --brand-50: #fff4e8;
-  --brand-100: #fbe4c9;
-  --brand-200: #f3cda0;
-  --brand-300: #eeb272;
-  --brand-400: #e99a4c;
-  --brand-500: #cf782d;
-  --brand-600: #a4551b;
-  --brand-700: #884318;
-  --brand-800: #663516;
-  --r-xs: 4px;
-  --r-sm: 6px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 18px;
-  --shadow-sm: 0 1px 3px #302a2505;
-  --shadow-md: 0 4px 16px #302a2508;
-  --shadow-lg: 0 12px 36px #302a2514;
-  --shadow-xl: 0 24px 80px #302a2529;
-  --topbar-h: 62px;
-}
 body { line-height: 1.55; }
 button, a, summary { touch-action: manipulation; }
 button { transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease; }
@@ -156,3 +123,9 @@ thead th { background: var(--surface-2); color: var(--ink-3); font-size: 11px; f
 /* Keep table labels readable and contain absolute accessibility text in its scrollport. */
 .table-scroll { position: relative; min-width: 0; max-width: 100%; }
 .table-scroll table { min-width: 760px; }
+
+@media (min-width: 761px) and (max-width: 1000px) {
+  .global-search { display: flex; }
+  .global-search input { width: 150px; }
+  .topbar .role-chip { display: none; }
+}
