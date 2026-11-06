@@ -9,6 +9,7 @@ type Controls = {
   close(): Promise<void>;
 };
 
+const props = defineProps<{ closeDisabled?: boolean }>();
 const controls = ref<Controls | null>(null);
 const maximized = ref(false);
 
@@ -52,6 +53,11 @@ async function toggle() {
 }
 
 async function close() {
+  if (props.closeDisabled) return;
+  if (!window.dispatchEvent(new Event("desktop-before-update", { cancelable: true }))) {
+    window.alert("操作未完成或草稿未能保存");
+    return;
+  }
   try {
     await controls.value?.close();
   } catch {
@@ -79,8 +85,9 @@ async function close() {
         <path d="M3.5 3.5V2h4.5v4.5H6.5" />
       </svg>
     </button>
-    <button type="button" class="window-close" title="关闭" aria-label="关闭" @click="close">
+    <button type="button" class="window-close" :disabled="closeDisabled" title="关闭" aria-label="关闭" @click="close">
       <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" /></svg>
     </button>
   </div>
 </template>
+

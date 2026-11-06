@@ -38,7 +38,7 @@ onMounted(async () => {
     >
       <Icon name="plus" :size="18" />导入知识库
     </button>
-    <button v-else class="button primary" @click="go('entries')">
+    <button v-else class="button" @click="go('entries')">
       <Icon name="book" :size="18" />浏览知识库
     </button>
     </div>
@@ -145,3 +145,4 @@ onMounted(async () => {
     <span class="spinner"></span>正在读取工作台
   </div>
 </template>
+

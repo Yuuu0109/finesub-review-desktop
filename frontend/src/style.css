@@ -1,8 +1,8 @@
 @charset "UTF-8";
 /* ==========================================================================
-   FineSub 知识库审核 — 校正台
-   日文校正的视觉语言：原稿用紙的纸面与罫线、朱笔批改的朱红、排版注记的等宽小字。
-   界面本身保持安静，识别度靠罫线网格与注记排版，不靠装饰。
+   FineSub 知识库审核 — 柑橘橙主题
+   奶油白阅读面、暖灰导航与柑橘橙强调色，使用同一组语义色与间距。
+   界面本身保持安静，保留清晰的层次与阅读空间。
    ========================================================================== */
 :root {
   color-scheme: light;
@@ -19,27 +19,27 @@
     "Yu Mincho", "YuMincho", "Source Han Serif SC", "Noto Serif SC",
     "Songti SC", "SimSun", serif;
 
-  --ink-1: #1d1a16;
-  --ink-2: #46403a;
-  --ink-3: #6b645c;
-  --ink-4: #787168;
+  --ink-1: #2c2824;
+  --ink-2: #514a43;
+  --ink-3: #756a60;
+  --ink-4: #807467;
 
-  --canvas: #f7f3ea;
-  --surface-1: #fffdf8;
-  --surface-2: #fbf7ee;
-  --surface-3: #efe9dc;
-  --line-1: #ded5c4;
-  --line-2: #cbbfa9;
+  --canvas: #f6f4f0;
+  --surface-1: #fffefa;
+  --surface-2: #f9f7f3;
+  --surface-3: #eee9e1;
+  --line-1: #e7e1d8;
+  --line-2: #d5cabc;
 
-  --brand-50: #fdf0ee;
-  --brand-100: #f8dbd6;
-  --brand-200: #eeb3aa;
-  --brand-300: #d98a7e;
-  --brand-400: #c96255;
-  --brand-500: #b8362a;
-  --brand-600: #8f2a20;
-  --brand-700: #74231b;
-  --brand-800: #5a1b15;
+  --brand-50: #fff4e8;
+  --brand-100: #fbe4c9;
+  --brand-200: #f3cda0;
+  --brand-300: #eeb272;
+  --brand-400: #e99a4c;
+  --brand-500: #cf782d;
+  --brand-600: #a4551b;
+  --brand-700: #884318;
+  --brand-800: #663516;
 
   --green-50: #eef3ee;
   --green-100: #d5e3d8;
@@ -47,9 +47,9 @@
   --green-600: #3f6b4f;
   --green-700: #2f523d;
   /* 侧栏比画布深一档的纸色：同一张纸上的分区，靠罫线分界，而不是一块墨色板。 */
-  --sidebar-bg: #f2ece0;
+  --sidebar-bg: #f0ece5;
   /* 深色面板：登录卡与档案页头。这两个是墨色板配浅色字，和侧栏用途不同，不能共用 token。 */
-  --panel-deep: #201e1a;
+  --panel-deep: #302a25;
 
   --amber-50: #fbf3e2;
   --amber-100: #f0dfba;
@@ -64,21 +64,21 @@
   --blue-600: #2f4a5c;
 
   /* 纸面上的分隔靠罫线，圆角收到接近排版边角，不做卡片化 */
-  --r-xs: 2px;
-  --r-sm: 3px;
-  --r-md: 4px;
-  --r-lg: 6px;
-  --r-xl: 10px;
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 18px;
   --r-full: 999px;
 
   --shadow-xs: 0 1px 1px rgba(29, 26, 22, 0.05);
-  --shadow-sm: 0 1px 2px rgba(29, 26, 22, 0.06);
-  --shadow-md: 0 3px 10px rgba(29, 26, 22, 0.07);
-  --shadow-lg: 0 12px 34px rgba(29, 26, 22, 0.12);
-  --shadow-xl: 0 24px 64px rgba(29, 26, 22, 0.2);
+  --shadow-sm: 0 1px 3px #302a2505;
+  --shadow-md: 0 4px 16px #302a2508;
+  --shadow-lg: 0 12px 36px #302a2514;
+  --shadow-xl: 0 24px 80px #302a2529;
 
   --sidebar-w: 224px;
-  --topbar-h: 64px;
+  --topbar-h: 62px;
 
   --text-xs: 12px;
   --text-sm: 13px;
@@ -312,7 +312,7 @@ form > label {
 .button:active:not(:disabled) {
   box-shadow: none;
 }
-/* 朱笔：主操作是朱色实心，次级只留罫线描边。 */
+/* 橙色标记：主操作是橙色实心，次级只留罫线描边。 */
 .button.primary {
   background: var(--brand-500);
   border-color: var(--brand-500);
@@ -1369,7 +1369,7 @@ tbody tr:hover {
 .document-toolbar .tabs {
   gap: 22px;
 }
-/* 阅读面是这张「校正纸」的主体：明朝体、左侧朱色罫线、按 measure 收窄。 */
+/* 阅读面是这张「校正纸」的主体：明朝体、左侧橙色罫线、按 measure 收窄。 */
 .markdown {
   font-family: var(--font-serif);
   font-size: var(--text-read);
@@ -1390,7 +1390,7 @@ tbody tr:hover {
   border-bottom: 1px solid var(--line-1);
   margin-bottom: 18px;
 }
-/* 整列已有朱色左罫，标题不再重复加竖条。 */
+/* 整列已有橙色左罫，标题不再重复加竖条。 */
 .markdown h2 {
   font-family: var(--font-serif);
   font-size: var(--text-lg);
@@ -1538,7 +1538,7 @@ tbody tr:hover {
   box-shadow: none;
   padding: 20px;
 }
-/* 朱笔标记用一条 2px 朱线，不铺红边——铺满一圈会读成报错框。 */
+/* 橙色标记标记用一条 2px 橙色边线，不铺红边——铺满一圈会读成报错框。 */
 .decision-panel {
   border-top: 2px solid var(--brand-500);
 }
@@ -1658,7 +1658,7 @@ tbody tr:hover {
   line-height: 1.75;
   color: var(--ink-2);
 }
-/* 引用的原文按校对纸上的引用条处理：纸面底、朱色细罫，不加圆角。 */
+/* 引用的原文按校对纸上的引用条处理：纸面底、橙色细罫，不加圆角。 */
 .record blockquote,
 blockquote {
   padding: 10px 14px;
@@ -1780,7 +1780,7 @@ blockquote {
 .batch-list-item:hover {
   background: var(--surface-2);
 }
-/* 选中项用朱色左边条标记，与侧栏一致；不铺淡色底。 */
+/* 选中项用橙色左边条标记，与侧栏一致；不铺淡色底。 */
 .batch-list-item.selected {
   background: var(--surface-2);
   box-shadow: inset 2px 0 0 var(--brand-500);
@@ -2289,7 +2289,7 @@ blockquote {
   background: var(--surface-3);
   color: var(--ink-1);
 }
-/* 选中项像纸上被朱笔框出的一栏：纸白底浮起，左侧一道朱线。 */
+/* 选中项像纸上被橙色标记框出的一栏：纸白底浮起，左侧一道橙色边线。 */
 .sidebar nav button.active,
 .sidebar .sidebar-action.active {
   background: var(--surface-1);
@@ -3662,3 +3662,4 @@ summary:focus-visible {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
+

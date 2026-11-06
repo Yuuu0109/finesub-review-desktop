@@ -28,3 +28,6 @@ desktop/mygo.ts
 # compiles in a checkout that has no build.
 desktop/ui/*
 !desktop/ui/.gitkeep
+
+
+release-notes.txt

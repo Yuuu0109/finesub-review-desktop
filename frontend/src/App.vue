@@ -29,7 +29,9 @@ const loading = ref(true),
 const route = ref(location.hash.slice(2) || "dashboard"),
   sidebar = ref(false),
   noticeOpen = ref(false),
-  globalSearch = ref("");
+  globalSearch = ref(""),
+  submittedSearch = ref(""),
+  searchInput = ref<HTMLInputElement>();
 const toastMessage = ref(""),
   toastError = ref(false);
 let toastTimer: ReturnType<typeof setTimeout>,
@@ -71,6 +73,15 @@ function hashChanged() {
 }
 function closeSidebar(event: KeyboardEvent) {
   if (event.key === "Escape") sidebar.value = false;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && !event.altKey && !document.querySelector("dialog[open]")) {
+    event.preventDefault();
+    searchInput.value?.focus();
+    searchInput.value?.select();
+  }
+}
+function search() {
+  submittedSearch.value = globalSearch.value.trim();
+  go("entries", "", new URLSearchParams({ q: submittedSearch.value }).toString());
 }
 async function refresh() {
   if (!user.value) return;
@@ -341,17 +352,15 @@ onUnmounted(() => {
           </button>
           <form
             class="global-search"
-            @submit.prevent="
-              go('entries');
-              route = 'entries';
-            "
+            @submit.prevent="search"
           >
             <Icon name="search" :size="17" /><input
+              ref="searchInput"
               v-model="globalSearch"
               aria-label="搜索知识库"
-              placeholder="搜索词条、别名、正文"
-              @keydown.enter="go('entries')"
-            />
+              placeholder="搜索知识库"
+              aria-keyshortcuts="Control+K Meta+K"
+            /><kbd aria-hidden="true">Ctrl K</kbd>
           </form>
           <button
             class="icon-button notification-button"
@@ -376,7 +385,7 @@ onUnmounted(() => {
           v-else-if="page === 'entries' || page === 'mine'"
           :key="route"
           :mine="page === 'mine'"
-          :search="globalSearch"
+          :search="submittedSearch"
           :initial-status="page === 'entries' ? selectedId : ''"
           :initial-query="routeQuery"
         /><ReviewPage
@@ -480,3 +489,4 @@ onUnmounted(() => {
     }}
   </div>
 </template>
+

@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import "./style.css";
 import "./workflow.css";
+import "./shell.css";
 import { call } from "mygo-runtime";
 import { desktop } from "./transport";
 if (desktop) {
@@ -35,3 +36,4 @@ mountApp().catch(() => {
       root.textContent = "页面资源加载失败，请按 Ctrl+F5 刷新后重试。";
     }
 });
+
